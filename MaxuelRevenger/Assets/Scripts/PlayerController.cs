@@ -7,127 +7,119 @@ using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
-    // Variáveis de configuração expostas no Inspector
+    // --- VARIÁVEIS DE CONFIGURAÇÃO (AJUSTÁVEIS NO INSPECTOR) ---
+    // [Header] cria um título no Inspector para organização.
+    // [SerializeField] expõe uma variável privada no Inspector.
 
     [Header("Movement Settings")]
-    [SerializeField] private float moveSpeed = 8f;
-    [SerializeField] private float jumpForce = 15f;
+    [SerializeField] private float moveSpeed = 8f;      // Velocidade de movimento do jogador.
+    [SerializeField] private float jumpForce = 6f;     // Força do impulso do pulo.
 
     [Header("Ground Check Settings")]
-    [SerializeField] private Transform groundCheckPoint;
-    [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private float groundCheckRadius = 0.2f;
+    [SerializeField] private Transform groundCheckPoint;  // Ponto de referência nos "pés" do jogador para detetar o chão.
+    [SerializeField] private LayerMask groundLayer;       // Define o que é considerado "chão" para o nosso sensor.
+    [SerializeField] private float groundCheckRadius = 0.2f; // Raio do círculo do sensor de chão.
 
-
-    [Header("Life System")] 
-    [SerializeField] private int maxHealth = 3;
-    private int currentHealth;
-    [SerializeField] private float knockbackForce = 5f;
-   
-    [SerializeField] private float knockbackAirGravityScale = 4f; //Gravidade extra no ar
-    private float originalGravityScale; // Variável para guardar a gravidade original
+    [Header("Life System")]
+    [SerializeField] private int maxHealth = 3;           // Vida máxima do jogador.
+    [SerializeField] private float knockbackForce = 5f;     // Força do empurrão ao sofrer dano.
+    [SerializeField] private float knockbackAirGravityScale = 4f; // Gravidade extra aplicada durante o knockback aéreo para uma queda mais rápida.
 
     [Header("Attack Settings")]
-    [SerializeField] private Animator slashAnimator;
-    [SerializeField] private Transform attackPoint;
-    [SerializeField] private float attackRange = 2.3f;
-    [SerializeField] private LayerMask enemyLayer;
-    [SerializeField] private float attackCooldown = 0.5f; //  Tempo de espera em segundos
-    [SerializeField] private Transform attackPivot;
-    private bool canAttack = true; //  Controla se o jogador pode atacar
+    [SerializeField] private Animator slashAnimator;    // Referência ao Animator do efeito de corte.
+    [SerializeField] private Transform attackPoint;     // Ponto de referência de onde o ataque se origina.
+    [SerializeField] private float attackRange = 2.3f;    // Raio do círculo da hitbox do ataque.
+    [SerializeField] private LayerMask enemyLayer;      // Define o que é considerado um "inimigo" para o nosso ataque.
+    [SerializeField] private float attackCooldown = 0.5f; // Tempo de espera entre ataques.
+    [SerializeField] private Transform attackPivot;     // Pivô que segura os objetos de ataque para virar com o jogador.
+
+    // --- VARIÁVEIS DE ESTADO INTERNAS (A "MEMÓRIA" DO JOGADOR) ---
+    private int currentHealth;              // Vida atual durante o jogo.
+    private float originalGravityScale;     // Guarda a gravidade normal para a podermos restaurar após o knockback.
+    private bool canAttack = true;          // Controla se o jogador pode atacar.
+    private Rigidbody2D rb;                 // Referência ao componente de física.
+    private PlayerControls playerControls;  // Referência ao nosso mapa de inputs.
+    // private Animator anim;                  // Referência ao componente Animator do jogador.
+    private SpriteRenderer spriteRenderer;  // Referência ao componente que desenha o sprite.
+    private Vector2 moveInput;              // Guarda a direção do input de movimento.
+    private bool isGrounded;                // Está a tocar no chão?
+    private bool canMove = true;            // Pode mover-se?
+    private bool isDead = false;            // Está morto?
+    private bool isInvincible = false;      // Está invencível? (Ainda não implementado, mas preparado)
+    private bool isJumping;                 // Está a pular? (Usado pelo Animator)
 
 
-
-    // Referências a componentes e classes
-    private Rigidbody2D rb;
-    private PlayerControls playerControls;
-    // private Animator anim;
-    private SpriteRenderer spriteRenderer;
-    private Vector2 moveInput;
-    private bool isGrounded;
-    private bool canMove = true;
-    private bool isDead = false;
-    private bool isInvincible = false;
-    
-
-
-
-    // Awake é chamado quando a instância do script é carregada
+    // Awake corre uma vez, antes do Start. Ideal para inicializar referências.
     private void Awake()
     {
-        // Obtém a referência para o componente Rigidbody2D no mesmo GameObject
+        // "Apanha" os componentes que estão no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-
-        // - - - - - - Referência Do Animator - - - - - - - 
         //anim = GetComponent<Animator>();
 
-        // Instancia a classe de controles gerada automaticamente
+        // Cria e ativa o nosso mapa de inputs.
         playerControls = new PlayerControls();
-       
 
+        // Define a vida inicial.
         currentHealth = maxHealth;
     }
 
-    // OnEnable é chamado quando o objeto se torna ativo
+    // OnEnable corre quando o objeto é ativado. Perfeito para "inscrever-se" em eventos.
     private void OnEnable()
     {
-        // Habilita o Action Map "Gameplay"
         playerControls.Gameplay.Enable();
-
-        // Inscreve o método Jump no evento 'performed' da ação Jump.
-        // Isso adota uma abordagem orientada a eventos, mais eficiente para ações discretas.
+        // Diz ao sistema de input: "Quando a ação 'Jump' for executada, chame o método Jump()".
         playerControls.Gameplay.Jump.performed += Jump;
         playerControls.Gameplay.Attack.performed += Attack;
     }
 
-    // OnDisable é chamado quando o objeto se torna inativo
+    // OnDisable corre quando o objeto é desativado. Limpamos as inscrições para evitar erros.
     private void OnDisable()
     {
-        // Desabilita o Action Map para evitar processamento desnecessário
         playerControls.Gameplay.Disable();
-
-        // Desinscreve o método Jump para evitar memory leaks (vazamentos de memória)
         playerControls.Gameplay.Jump.performed -= Jump;
         playerControls.Gameplay.Attack.performed -= Attack;
     }
 
-    // Update é chamado a cada frame
+    // Update corre a cada frame. Ideal para ler inputs e lógica visual.
     private void Update()
     {
-        // Só lê o input se o jogador puder se mover
+        // Apenas lê o input de movimento se o jogador tiver controlo.
         if (canMove)
         {
             moveInput.x = playerControls.Gameplay.Move.ReadValue<float>();
         }
         else
         {
-            moveInput.x = 0; // Garante que o jogador para se não puder se mover
+            moveInput.x = 0;
         }
-        // --- LÓGICA DE INVERSÃO DO SPRITE ---
+
+        // Lógica para virar o sprite do jogador e o pivô do ataque.
         if (moveInput.x > 0)
         {
-            spriteRenderer.flipX = false; // Vira o sprite do jogador
-            attackPivot.localScale = Vector3.one; // Restaura a escala do pivô (sem inversão)
+            spriteRenderer.flipX = false;
+            attackPivot.localScale = Vector3.one;
         }
         else if (moveInput.x < 0)
         {
-            spriteRenderer.flipX = true; // Vira o sprite do jogador
-            attackPivot.localScale = new Vector3(-1, 1, 1); // Inverte a escala do pivô no eixo X
+            spriteRenderer.flipX = true;
+            attackPivot.localScale = new Vector3(-1, 1, 1);
         }
-        // ------------------------------------
+
+        // Comunicação com o Animator (a ser ativada na aula).
         //anim.SetFloat("speed", Mathf.Abs(moveInput.x));
         //anim.SetFloat("velocityY", rb.velocity.y);
     }
 
-    // FixedUpdate é chamado em um intervalo de tempo fixo, ideal para cálculos de física
+    // FixedUpdate corre a um ritmo fixo, sincronizado com a física.
     private void FixedUpdate()
     {
         CheckIfGrounded();
 
-        // Só aplica o movimento se o jogador puder se mover
+        // Apenas aplica o movimento se o jogador tiver controlo.
         if (canMove)
         {
+            // Aplicamos o movimento diretamente à velocidade do Rigidbody.
             rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
         }
 
@@ -135,29 +127,28 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    // Método chamado pelo evento da ação Jump
+    // Método chamado pelo evento de input "Jump".
     private void Jump(InputAction.CallbackContext context)
     {
-        // Só permite o pulo se o personagem estiver no chão
+        // A condição impede o "pulo duplo".
         if (isGrounded)
         {
             //anim.SetTrigger("jump");
-
-            // Aplica uma força vertical instantânea (impulso)
+            // Adiciona uma força vertical instantânea.
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
         }
     }
 
-    // Método para verificar se o personagem está tocando o chão
+    // Verifica se o "sensor de pés" está a tocar em algo na layer "Ground".
     private void CheckIfGrounded()
     {
-        // Cria um círculo invisível na posição do groundCheckPoint
-        // e verifica se ele colide com qualquer objeto na camada "groundLayer"
         isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
     }
 
+    // Método público que pode ser chamado por outros scripts (como o do inimigo).
     public void TakeDamage(int damageAmount, Transform enemyTransform)
     {
+        // Cláusula de guarda: ignora o dano se o jogador já estiver invencível ou morto.
         if (isInvincible || isDead || !canMove) return;
 
         currentHealth -= damageAmount;
@@ -165,41 +156,46 @@ public class PlayerController : MonoBehaviour
 
         if (currentHealth <= 0)
         {
-            StartCoroutine(Die());
+            // Se o dano for fatal, inicia a sequência de morte com knockback.
+            StartCoroutine(FatalHitSequence(enemyTransform));
         }
         else
         {
-            // Se o dano não for fatal, execute a animação e o knockback.
-           
+            // Se não for fatal, inicia o flash e o knockback.
             StartCoroutine(DamageFlashCoroutine());
             StartCoroutine(KnockbackCoroutine(enemyTransform));
         }
     }
 
+    // Corrotina que orquestra a sequência de knockback e depois a de morte.
+    private IEnumerator FatalHitSequence(Transform enemyTransform)
+    {
+        StartCoroutine(DamageFlashCoroutine());
+        // yield return espera que a corrotina de knockback termine completamente.
+        yield return StartCoroutine(KnockbackCoroutine(enemyTransform));
+        // Só depois de o knockback terminar, inicia a corrotina de morte.
+        StartCoroutine(Die());
+    }
 
+    // Corrotina que lida com o knockback e a perda de controlo.
     private IEnumerator KnockbackCoroutine(Transform enemyTransform)
     {
-        canMove = false; // Desativa o controle do jogador
-        originalGravityScale = rb.gravityScale; // Guarda a gravidade original
+        canMove = false;
+        originalGravityScale = rb.gravityScale;
+        rb.velocity = Vector2.zero; // Zera a velocidade para um empurrão limpo.
 
-        // ZERA a velocidade atual para cancelar qualquer movimento existente (como o pulo)
-        rb.velocity = Vector2.zero;
-
-        // Calcula a direção e aplica o empurrão
         Vector2 knockbackDirection = (transform.position - enemyTransform.position).normalized;
-        rb.velocity = Vector2.zero; // Zera a velocidade atual para que o empurrão seja limpo
         rb.AddForce(knockbackDirection * knockbackForce, ForceMode2D.Impulse);
 
-        // Verifica se o jogador estava no chão QUANDO sofreu o dano
         if (isGrounded)
         {
-            yield return new WaitForSeconds(0.8f); // Usamos um tempo fixo para o chão
+            // Se estiver no chão, espera por um tempo fixo.
+            yield return new WaitForSeconds(0.8f);
         }
         else
         {
-            // Se estiver no ar, aumente a gravidade para uma queda mais rápida
+            // Se estiver no ar, aplica gravidade extra e espera até aterrar.
             rb.gravityScale = knockbackAirGravityScale;
-
             yield return new WaitForFixedUpdate();
             while (!isGrounded)
             {
@@ -207,35 +203,30 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Restaura a gravidade original ANTES de devolver o controlo
-        rb.gravityScale = originalGravityScale;
-        canMove = true; 
+        rb.gravityScale = originalGravityScale; // Restaura a gravidade.
+        canMove = true; // Devolve o controlo.
     }
 
+    // Corrotina que lida com a morte.
     private IEnumerator Die()
     {
-        isDead = true; // Marca o jogador como morto
-
-        // - - - - - Ativa animação de morte - - - - - -
+        isDead = true;
         //anim.SetTrigger("die"); 
-
-        this.enabled = false; // Desativa o script para parar o movimento
-        rb.velocity = Vector2.zero; // Para o jogador imediatamente
+        this.enabled = false; // Desativa o script para parar todos os Updates.
+        rb.velocity = Vector2.zero;
 
         StartCoroutine(DamageFlashCoroutine());
-        // ESPERE a animação de morte terminar.
-        // Ajuste este valor para a duração da sua animação de morte em segundos.
+        // Espera pela animação de morte.
         yield return new WaitForSeconds(1f);
 
-        // Reinicia a cena atual
+        // Reinicia a cena.
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
 
-
+    // Corrotina para o efeito de piscar.
     private IEnumerator DamageFlashCoroutine()
     {
-        // Pisca 3 vezes
         for (int i = 0; i < 3; i++)
         {
             spriteRenderer.color = Color.red;
@@ -245,21 +236,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Método chamado pelo evento de input "Attack".
     private void Attack(InputAction.CallbackContext context)
     {
-        // Verifica se o jogador pode se mover E se o ataque não está em cooldown
         if (canMove && canAttack)
         {
-            // Inicia a corrotina de cooldown
             StartCoroutine(AttackCooldownCoroutine());
-
-            // Toca a animação visual do ataque
             slashAnimator.SetTrigger("attack");
 
-            // Cria um círculo invisível para detetar inimigos
+            // Cria um círculo de ataque e deteta todos os inimigos dentro dele.
             Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayer);
 
-            // Passa por cada inimigo atingido e aplica dano
+            // Causa dano a cada inimigo atingido.
             foreach (Collider2D enemy in hitEnemies)
             {
                 enemy.GetComponent<EnemyHealth>().TakeDamage(1);
@@ -267,28 +255,20 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Corrotina para o cooldown do ataque.
     private IEnumerator AttackCooldownCoroutine()
     {
-        canAttack = false; // Impede o jogador de atacar novamente
-        yield return new WaitForSeconds(attackCooldown); // Espera pelo tempo de cooldown
-        canAttack = true; // Permite que o jogador ataque novamente
+        canAttack = false;
+        yield return new WaitForSeconds(attackCooldown);
+        canAttack = true;
     }
 
-    // Este método especial da Unity desenha coisas na janela da Scene
+
+    // Desenha a hitbox do ataque no Editor para fins de depuração.
     private void OnDrawGizmosSelected()
     {
-        // Garante que temos uma referência ao attackPoint para não dar erro
-        if (attackPoint == null)
-        {
-            return;
-        }
-
-        // Define a cor do nosso gizmo
+        if (attackPoint == null) return;
         Gizmos.color = Color.red;
-        // Desenha uma esfera de arame na posição e com o raio do nosso ataque
         Gizmos.DrawWireSphere(attackPoint.position, attackRange);
     }
-
- 
-
 }

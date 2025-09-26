@@ -1,35 +1,68 @@
 using UnityEngine;
+using System.Collections;
 
 public class EnemyPatrol : MonoBehaviour
 {
+    // --- VARIÁVEIS DE CONFIGURAÇÃO (AJUSTÁVEIS NO INSPECTOR) ---
     [Header("Patrol Points")]
-    [SerializeField] private Transform pointA;
-    [SerializeField] private Transform pointB;
+    [SerializeField] private Transform pointA;      // Ponto de início da patrulha.
+    [SerializeField] private Transform pointB;      // Ponto final da patrulha.
 
     [Header("Enemy Settings")]
-    [SerializeField] private float speed = 2f;
+    [SerializeField] private float speed = 2f;        // Velocidade de movimento do inimigo.
+    [SerializeField] private float idleDuration = 2f; // Tempo que o inimigo fica parado em cada ponto.
 
-    private Transform currentTarget;
-    private Rigidbody2D rb;
+    // --- VARIÁVEIS DE ESTADO INTERNAS ---
+    private Transform currentTarget;            // Guarda o alvo atual (A ou B).
+    private Rigidbody2D rb;                     // Referência ao componente de física.
+    private SpriteRenderer spriteRenderer;      // Referência ao componente que desenha o sprite.
+    private Coroutine runningPatrolRoutine;     // Referência à corrotina de patrulha para podermos pará-la.
+    //private Animator anim;                    // Referência ao componente Animator.
 
+    // Start corre uma vez no início, após o Awake.
     void Start()
     {
+        // "Apanha" os componentes que estão no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
-        currentTarget = pointB; // Começa a mover-se em direção ao ponto B
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        //anim = GetComponent<Animator>();
+
+        // Define o alvo inicial e inicia a rotina de patrulha.
+        currentTarget = pointB;
+        runningPatrolRoutine = StartCoroutine(PatrolRoutine());
     }
 
-    void Update()
+    // Corrotina que controla todo o ciclo de movimento e pausas do inimigo.
+    private IEnumerator PatrolRoutine()
     {
-        // Calcula a direção para o alvo
-        Vector2 direction = (currentTarget.position - transform.position).normalized;
-
-        // Move o Rigidbody na direção calculada
-        rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
-
-        // Verifica se chegou perto do alvo para mudar de direção
-        if (Vector2.Distance(transform.position, currentTarget.position) < 0.5f)
+        // Um loop infinito garante que o inimigo patrulhe para sempre.
+        while (true)
         {
-            // Se o alvo atual é o ponto B, muda para o ponto A, e vice-versa
+            // --- Fase de Movimento ---
+            // A ser ativado na aula: informa o Animator para tocar a animação de "correr".
+            //anim.SetFloat("speed", speed);
+
+            // Um loop interno que continua enquanto o inimigo não chegar ao seu alvo.
+            while (Vector2.Distance(transform.position, currentTarget.position) > 0.5f)
+            {
+                // Calcula a direção, aplica a velocidade e vira o sprite.
+                Vector2 direction = (currentTarget.position - transform.position).normalized;
+                rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
+                FlipSprite();
+                // Pausa a corrotina até o próximo frame, para não bloquear o jogo.
+                yield return null;
+            }
+
+            // --- Fase de Pausa (Idle) ---
+            rb.velocity = Vector2.zero; // Para o inimigo.
+            // A ser ativado na aula: informa o Animator para tocar a animação de "parado".
+            //anim.SetFloat("speed", 0);
+
+            // Pausa a corrotina pela duração definida, fazendo o inimigo esperar.
+            yield return new WaitForSeconds(idleDuration);
+
+            // --- Troca de Alvo ---
+            // Inverte o alvo para a próxima iteração do loop.
             if (currentTarget == pointB)
             {
                 currentTarget = pointA;
@@ -41,20 +74,41 @@ public class EnemyPatrol : MonoBehaviour
         }
     }
 
+    // Método que causa dano ao jogador ao tocar nele.
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Verifica se o objeto com o qual colidimos tem a tag "Player"
+        // Verifica se o objeto com que colidiu tem a tag "Player".
         if (collision.gameObject.CompareTag("Player"))
         {
-            // Tenta obter o componente PlayerController do objeto do jogador
+            // Pega a referência do script do jogador para chamar o método de dano.
             PlayerController player = collision.gameObject.GetComponent<PlayerController>();
-
-            // Verifica se o componente foi encontrado (para evitar erros)
             if (player != null)
             {
-                // Chama o método público TakeDamage no script do jogador, causando 1 de dano
                 player.TakeDamage(1, transform);
             }
+        }
+    }
+
+    // Método público que para a corrotina de patrulha. Chamado pelo script EnemyHealth quando o inimigo morre.
+    public void StopPatrol()
+    {
+        if (runningPatrolRoutine != null)
+        {
+            StopCoroutine(runningPatrolRoutine);
+        }
+    }
+
+    // Vira o sprite do inimigo com base na direção da sua velocidade horizontal.
+    private void FlipSprite()
+    {
+        // Lembre-se que esta lógica pode precisar de ser invertida (true/false) dependendo da direção original do seu sprite.
+        if (rb.velocity.x > 0)
+        {
+            spriteRenderer.flipX = false; // Se a velocidade é positiva, olha para a direita.
+        }
+        else if (rb.velocity.x < 0)
+        {
+            spriteRenderer.flipX = true; // Se a velocidade é negativa, olha para a esquerda.
         }
     }
 }

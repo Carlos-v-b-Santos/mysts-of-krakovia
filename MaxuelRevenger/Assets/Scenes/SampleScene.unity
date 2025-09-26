@@ -245,7 +245,7 @@ SpriteRenderer:
   m_SortingLayerID: 2035109543
   m_SortingLayer: 1
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 3fc2bbd409bf34ab6af1637bab569da1, type: 3}
+  m_Sprite: {fileID: 21300220, guid: 261212b977f594d5dbc48631a5c1295c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -265,7 +265,7 @@ Transform:
   m_GameObject: {fileID: 67368567}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.96, y: -0.6538527, z: 0}
+  m_LocalPosition: {x: -2.96, y: -1.81, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -286,7 +286,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 8
-  jumpForce: 8
+  jumpForce: 6
   groundCheckPoint: {fileID: 1792814342}
   groundLayer:
     serializedVersion: 2
@@ -2411,7 +2411,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pointA: {fileID: 616981470}
   pointB: {fileID: 723123303}
-  speed: 3
+  speed: 5
+  idleDuration: 1
 --- !u!50 &1907883171
 Rigidbody2D:
   serializedVersion: 4
@@ -2480,7 +2481,7 @@ SpriteRenderer:
   m_SortingLayerID: 2035109543
   m_SortingLayer: 1
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3fc2bbd409bf34ab6af1637bab569da1, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -2542,7 +2543,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 1.28, y: 1.28}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
