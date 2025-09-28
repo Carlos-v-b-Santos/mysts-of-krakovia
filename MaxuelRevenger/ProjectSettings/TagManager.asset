@@ -12,8 +12,8 @@ TagManager:
   - Water
   - UI
   - Enemy
-  - 
-  - 
+  - Wall
+  - ObjStatic
   - 
   - 
   - 
@@ -38,10 +38,13 @@ TagManager:
   - 
   - 
   m_SortingLayers:
-  - name: Background
+  - name: Background_Far
     uniqueID: 1519351683
     locked: 0
-  - name: Midground
+  - name: Background_Mid
+    uniqueID: 1041659987
+    locked: 0
+  - name: Background_Near
     uniqueID: 4157551627
     locked: 0
   - name: Default

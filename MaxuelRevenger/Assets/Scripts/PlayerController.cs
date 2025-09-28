@@ -39,7 +39,7 @@ public class PlayerController : MonoBehaviour
     private bool canAttack = true;          // Controla se o jogador pode atacar.
     private Rigidbody2D rb;                 // Referência ao componente de física.
     private PlayerControls playerControls;  // Referência ao nosso mapa de inputs.
-    // private Animator anim;                  // Referência ao componente Animator do jogador.
+    private Animator anim;                  // Referência ao componente Animator do jogador.
     private SpriteRenderer spriteRenderer;  // Referência ao componente que desenha o sprite.
     private Vector2 moveInput;              // Guarda a direção do input de movimento.
     private bool isGrounded;                // Está a tocar no chão?
@@ -55,7 +55,7 @@ public class PlayerController : MonoBehaviour
         // "Apanha" os componentes que estão no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        //anim = GetComponent<Animator>();
+        anim = GetComponent<Animator>();
 
         // Cria e ativa o nosso mapa de inputs.
         playerControls = new PlayerControls();
@@ -107,8 +107,8 @@ public class PlayerController : MonoBehaviour
         }
 
         // Comunicação com o Animator (a ser ativada na aula).
-        //anim.SetFloat("speed", Mathf.Abs(moveInput.x));
-        //anim.SetFloat("velocityY", rb.velocity.y);
+        anim.SetFloat("speed", Mathf.Abs(moveInput.x));
+        anim.SetFloat("velocityY", rb.velocity.y);
     }
 
     // FixedUpdate corre a um ritmo fixo, sincronizado com a física.
@@ -123,7 +123,7 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
         }
 
-        //anim.SetBool("isJumping", !isGrounded);
+        anim.SetBool("isJumping", !isGrounded);
     }
 
 
@@ -133,7 +133,7 @@ public class PlayerController : MonoBehaviour
         // A condição impede o "pulo duplo".
         if (isGrounded)
         {
-            //anim.SetTrigger("jump");
+            anim.SetTrigger("jump");
             // Adiciona uma força vertical instantânea.
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
         }
@@ -211,7 +211,7 @@ public class PlayerController : MonoBehaviour
     private IEnumerator Die()
     {
         isDead = true;
-        //anim.SetTrigger("die"); 
+        anim.SetTrigger("die"); 
         this.enabled = false; // Desativa o script para parar todos os Updates.
         rb.velocity = Vector2.zero;
 
