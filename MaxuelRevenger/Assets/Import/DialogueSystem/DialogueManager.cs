@@ -76,7 +76,7 @@ public class DialogueManager : MonoBehaviour
         instance = this;
 
         // Verificar se Singleton pattern encaixa em jogo online/multiplayer
-        //playerController = PlayerController.GetInstance();
+        playerController = PlayerController.GetInstance();
 
         dialogueVariables = new DialogueVariables(loadGlobalsJSON);
         inkExternalFunctions = new InkExternalFunctions();

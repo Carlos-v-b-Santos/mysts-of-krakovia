@@ -2,30 +2,30 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    // O alvo que a câmara deve seguir (o nosso jogador).
+    // O alvo que a cï¿½mara deve seguir (o nosso jogador).
     public Transform target;
 
-    // A velocidade de suavização do movimento da câmara.
+    // A velocidade de suavizaï¿½ï¿½o do movimento da cï¿½mara.
     // Um valor mais baixo torna o movimento mais suave e lento.
     [SerializeField] private float smoothSpeed = 0.125f;
 
-    // O desvio da câmara em relação ao jogador (permite-nos ajustar o enquadramento).
+    // O desvio da cï¿½mara em relaï¿½ï¿½o ao jogador (permite-nos ajustar o enquadramento).
     [SerializeField] private Vector3 offset;
 
-    // LateUpdate é chamado depois de todos os métodos Update.
-    // É o melhor sítio para a lógica da câmara, pois garante que o jogador já se moveu.
-    void LateUpdate()
+    // LateUpdate ï¿½ chamado depois de todos os mï¿½todos Update.
+    // ï¿½ o melhor sï¿½tio para a lï¿½gica da cï¿½mara, pois garante que o jogador jï¿½ se moveu.
+    void FixedUpdate()
     {
-        // Se não tivermos um alvo, não faça nada.
+        // Se nï¿½o tivermos um alvo, nï¿½o faï¿½a nada.
         if (target == null) return;
 
-        // Calcula a posição desejada para a câmara (posição do alvo + desvio).
+        // Calcula a posiï¿½ï¿½o desejada para a cï¿½mara (posiï¿½ï¿½o do alvo + desvio).
         Vector3 desiredPosition = target.position + offset;
 
-        // Interpola suavemente da posição atual da câmara para a posição desejada.
+        // Interpola suavemente da posiï¿½ï¿½o atual da cï¿½mara para a posiï¿½ï¿½o desejada.
         Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
 
-        // Aplica a nova posição à câmara.
+        // Aplica a nova posiï¿½ï¿½o ï¿½ cï¿½mara.
         transform.position = smoothedPosition;
     }
 }

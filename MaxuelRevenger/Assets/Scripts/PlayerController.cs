@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using Unity.VisualScripting;
 
 
 public class PlayerController : MonoBehaviour
@@ -49,11 +50,23 @@ public class PlayerController : MonoBehaviour
     private bool isJumping;                 // Est� a pular? (Usado pelo Animator)
 
     public bool SubmitPressed { get; private set; } //confirmar opções nos dialogos
+    public bool InteractPressed { get; private set; } //interagir com npcs e objetos
 
+    private static PlayerController instance;
+    public static PlayerController GetInstance()
+    {
+        return instance;
+    }
 
     // Awake corre uma vez, antes do Start. Ideal para inicializar refer�ncias.
     private void Awake()
     {
+        if (instance != null)
+        {
+            Debug.LogError("Found more than one Player Locomotion Input in the scene.");
+        }
+        instance = this;
+
         // "Apanha" os componentes que est�o no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -74,6 +87,10 @@ public class PlayerController : MonoBehaviour
         // Diz ao sistema de input: "Quando a a��o 'Jump' for executada, chame o m�todo Jump()".
         playerControls.Gameplay.Jump.performed += Jump;
         playerControls.Gameplay.Attack.performed += Attack;
+        playerControls.Gameplay.Interact.performed += ctx => RegisterInteractPressed(ctx);
+        playerControls.Gameplay.QuestLogToggle.performed += ctx => OnQuestLogToggle(ctx);
+        playerControls.UI.Submit.performed += ctx => SubmitPressed = true;
+
     }
 
     // OnDisable corre quando o objeto � desativado. Limpamos as inscri��es para evitar erros.
@@ -82,10 +99,21 @@ public class PlayerController : MonoBehaviour
         playerControls.Gameplay.Disable();
         playerControls.Gameplay.Jump.performed -= Jump;
         playerControls.Gameplay.Attack.performed -= Attack;
+        playerControls.Gameplay.Interact.performed -= ctx => RegisterInteractPressed(ctx);
+        playerControls.Gameplay.QuestLogToggle.performed -= ctx => OnQuestLogToggle(ctx);
+        playerControls.UI.Submit.performed -= ctx => SubmitPressed = true;
     }
 
     // Update corre a cada frame. Ideal para ler inputs e l�gica visual.
     private void Update()
+    {
+
+
+
+    }
+
+    // FixedUpdate corre a um ritmo fixo, sincronizado com a f�sica.
+    private void FixedUpdate()
     {
         // Apenas l� o input de movimento se o jogador tiver controlo.
         if (canMove)
@@ -95,6 +123,15 @@ public class PlayerController : MonoBehaviour
         else
         {
             moveInput.x = 0;
+        }
+
+        CheckIfGrounded();
+
+        // Apenas aplica o movimento se o jogador tiver controlo.
+        if (canMove)
+        {
+            // Aplicamos o movimento diretamente � velocidade do Rigidbody.
+            rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
         }
 
         // L�gica para virar o sprite do jogador e o piv� do ataque.
@@ -110,23 +147,9 @@ public class PlayerController : MonoBehaviour
         }
 
         // Comunica��o com o Animator (a ser ativada na aula).
+        anim.SetBool("isJumping", !isGrounded);
         anim.SetFloat("speed", Mathf.Abs(moveInput.x));
         anim.SetFloat("velocityY", rb.velocity.y);
-    }
-
-    // FixedUpdate corre a um ritmo fixo, sincronizado com a f�sica.
-    private void FixedUpdate()
-    {
-        CheckIfGrounded();
-
-        // Apenas aplica o movimento se o jogador tiver controlo.
-        if (canMove)
-        {
-            // Aplicamos o movimento diretamente � velocidade do Rigidbody.
-            rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
-        }
-
-        anim.SetBool("isJumping", !isGrounded);
     }
 
 
@@ -308,17 +331,49 @@ public class PlayerController : MonoBehaviour
 
     private void EnableUIControls()
     {
+        print("Enable UI Controls");
         playerControls.UI.Enable();
+        //playerControls.UI.Submit.performed += ctx => SubmitPressed = true;
+        //print(SubmitPressed);
         //Controls.UI.SetCallbacks(this);
     }
 
     private void DisableUIControls()
     {
         playerControls.UI.Disable();
+        //playerControls.UI.Submit.performed -= ctx => SubmitPressedAgain();
         //Controls.UI.RemoveCallbacks(this);
     }
-    public void RegisterSubmitPressed() 
+
+    public void RegisterSubmitPressed()
     {
         SubmitPressed = false;
+    }
+
+    private void RegisterInteractPressed(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            InteractPressed = true;
+            GameEventsManager.Instance.inputEvents.InteractPressed();
+            InteractPressed = false;
+        }
+        
+    }
+
+    //public bool GetInteractPressed()
+    //{
+    //    bool result = InteractPressed;
+    //    InteractPressed = false;
+    //    return result;
+    //}
+    
+    public void OnQuestLogToggle(InputAction.CallbackContext context)
+    {
+        print("Quest Log Toggled");
+        if (context.performed)
+        {
+            GameEventsManager.Instance.inputEvents.QuestLogTogglePressed();
+        }
     }
 }
