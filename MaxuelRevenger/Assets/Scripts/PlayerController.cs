@@ -50,8 +50,6 @@ public class PlayerController : MonoBehaviour
 
     public bool SubmitPressed { get; private set; } //confirmar opções nos dialogos
 
-    public PlayerControls Controls { get; private set; }
-
 
     // Awake corre uma vez, antes do Start. Ideal para inicializar refer�ncias.
     private void Awake()
@@ -71,7 +69,7 @@ public class PlayerController : MonoBehaviour
     // OnEnable corre quando o objeto � ativado. Perfeito para "inscrever-se" em eventos.
     private void OnEnable()
     {
-        //playerControls.Gameplay.Enable();
+        playerControls.Gameplay.Enable();
         EnterGameplayMode();
         // Diz ao sistema de input: "Quando a a��o 'Jump' for executada, chame o m�todo Jump()".
         playerControls.Gameplay.Jump.performed += Jump;
@@ -298,25 +296,25 @@ public class PlayerController : MonoBehaviour
 
     private void EnablePlayerControls()
     {
-        Controls.Gameplay.Enable();
+        playerControls.Gameplay.Enable();
         //Controls.Gameplay.SetCallbacks(this);
     }
 
     private void DisablePlayerControls()
     {
-        Controls.Gameplay.Disable();
+        playerControls.Gameplay.Disable();
         //Controls.Gameplay.RemoveCallbacks(this);
     }
 
     private void EnableUIControls()
     {
-        Controls.UI.Enable();
+        playerControls.UI.Enable();
         //Controls.UI.SetCallbacks(this);
     }
 
     private void DisableUIControls()
     {
-        Controls.UI.Disable();
+        playerControls.UI.Disable();
         //Controls.UI.RemoveCallbacks(this);
     }
     public void RegisterSubmitPressed() 
