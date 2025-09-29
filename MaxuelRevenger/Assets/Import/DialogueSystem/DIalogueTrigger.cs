@@ -12,8 +12,18 @@ public class DialogueTrigger : MonoBehaviour
     [SerializeField] private TextAsset inkJSON;
 
     private bool playerInRange;
+    
+    private void OnEnable()
+    {
+        GameEventsManager.Instance.inputEvents.OnInteractPressed += InteractPressed;
+    }
 
-    private void Awake() 
+    private void OnDisable()
+    {
+        GameEventsManager.Instance.inputEvents.OnInteractPressed -= InteractPressed;
+    }
+
+    private void Awake()
     {
         playerInRange = false;
         visualCue.SetActive(false);
@@ -24,31 +34,37 @@ public class DialogueTrigger : MonoBehaviour
         if (playerInRange && !DialogueManager.GetInstance().DialogueIsPlaying)
         {
             visualCue.SetActive(true);
-            // Verificar a configuração do InputManager e descomentar se necessário
-            //if (InputManager.GetInstance().GetInteractPressed()) 
-            //{
-            //    DialogueManager.GetInstance().EnterDialogueMode(inkJSON);//, emoteAnimator);
-            //}
         }
         else
         {
             visualCue.SetActive(false);
         }
     }
-
-    private void OnTriggerEnter(Collider collider) 
+    
+    private void InteractPressed()
     {
-        print("Player entered trigger zone");
+        if (playerInRange && !DialogueManager.GetInstance().DialogueIsPlaying)
+        {
+            DialogueManager.GetInstance().EnterDialogueMode(inkJSON);//, emoteAnimator);
+        }
+       
+    }
+
+    private void OnTriggerEnter2D(Collider2D collider)
+    {
+
         if (collider.gameObject.CompareTag("Player"))
         {
+            print("Player entered trigger zone");
             playerInRange = true;
         }
     }
 
-    private void OnTriggerExit(Collider collider) 
+    private void OnTriggerExit2D(Collider2D collider) 
     {
         if (collider.gameObject.CompareTag("Player"))
         {
+            print("Player exited trigger zone");
             playerInRange = false;
         }
     }

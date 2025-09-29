@@ -3,20 +3,29 @@ using System;
 public class MiscEvents
 {
     public event Action onCoinCollected;
-    public void CoinCollected() 
+    public void CoinCollected()
     {
-        if (onCoinCollected != null) 
+        if (onCoinCollected != null)
         {
             onCoinCollected();
         }
     }
 
     public event Action onGemCollected;
-    public void GemCollected() 
+    public void GemCollected()
     {
-        if (onGemCollected != null) 
+        if (onGemCollected != null)
         {
             onGemCollected();
+        }
+    }
+    
+    public event Action onCaixaDestruida;
+    public void CaixaDestruida()
+    {
+        if (onCaixaDestruida != null)
+        {
+            onCaixaDestruida();
         }
     }
 }

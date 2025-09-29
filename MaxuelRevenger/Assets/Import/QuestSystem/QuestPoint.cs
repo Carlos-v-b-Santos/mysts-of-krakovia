@@ -82,7 +82,7 @@ public class QuestPoint : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter(Collider otherCollider)
+    private void OnTriggerEnter2D(Collider2D otherCollider)
     {
         print("OnTriggerEnter: " + otherCollider.name);
         if (otherCollider.CompareTag("Player"))
@@ -93,8 +93,9 @@ public class QuestPoint : MonoBehaviour
         }
     }
 
-    private void OnTriggerExit(Collider otherCollider)
+    private void OnTriggerExit2D(Collider2D otherCollider)
     {
+        print("OnTriggerExit: " + otherCollider.name);
         if (otherCollider.CompareTag("Player"))
         {
             playerIsNear = false;
