@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using Unity.VisualScripting;
+using System;
 
 
 public class PlayerController : MonoBehaviour
@@ -49,6 +50,8 @@ public class PlayerController : MonoBehaviour
     private bool isInvincible = false;      // Est� invenc�vel? (Ainda n�o implementado, mas preparado)
     private bool isJumping;                 // Est� a pular? (Usado pelo Animator)
 
+    private bool isFiring;
+
     public bool SubmitPressed { get; private set; } //confirmar opções nos dialogos
     public bool InteractPressed { get; private set; } //interagir com npcs e objetos
 
@@ -89,6 +92,8 @@ public class PlayerController : MonoBehaviour
         playerControls.Gameplay.Attack.performed += Attack;
         playerControls.Gameplay.Interact.performed += ctx => RegisterInteractPressed(ctx);
         playerControls.Gameplay.QuestLogToggle.performed += ctx => OnQuestLogToggle(ctx);
+        playerControls.Gameplay.Shoot.started += OnFireStarted;
+        playerControls.Gameplay.Shoot.canceled += OnFireCanceled;
         playerControls.UI.Submit.performed += ctx => SubmitPressed = true;
 
     }
@@ -101,6 +106,8 @@ public class PlayerController : MonoBehaviour
         playerControls.Gameplay.Attack.performed -= Attack;
         playerControls.Gameplay.Interact.performed -= ctx => RegisterInteractPressed(ctx);
         playerControls.Gameplay.QuestLogToggle.performed -= ctx => OnQuestLogToggle(ctx);
+        playerControls.Gameplay.Shoot.started -= OnFireStarted;
+        playerControls.Gameplay.Shoot.canceled -= OnFireCanceled;
         playerControls.UI.Submit.performed -= ctx => SubmitPressed = true;
     }
 
@@ -146,8 +153,13 @@ public class PlayerController : MonoBehaviour
             attackPivot.localScale = new Vector3(-1, 1, 1);
         }
 
+        if (isFiring)
+        {
+            ShootPressed();
+        }
+
         // Comunica��o com o Animator (a ser ativada na aula).
-        anim.SetBool("isJumping", !isGrounded);
+            anim.SetBool("isJumping", !isGrounded);
         anim.SetFloat("speed", Mathf.Abs(moveInput.x));
         anim.SetFloat("velocityY", rb.velocity.y);
     }
@@ -276,7 +288,8 @@ public class PlayerController : MonoBehaviour
             // Causa dano a cada inimigo atingido.
             foreach (Collider2D enemy in hitEnemies)
             {
-                enemy.GetComponent<EnemyHealth>().TakeDamage(1);
+                //enemy.GetComponent<EnemyHealth>().TakeDamage(1);
+                DamageManager.Instance.ApplyDamage(enemy.gameObject, 1, -1);
             }
         }
     }
@@ -358,7 +371,7 @@ public class PlayerController : MonoBehaviour
             GameEventsManager.Instance.inputEvents.InteractPressed();
             InteractPressed = false;
         }
-        
+
     }
 
     //public bool GetInteractPressed()
@@ -367,7 +380,7 @@ public class PlayerController : MonoBehaviour
     //    InteractPressed = false;
     //    return result;
     //}
-    
+
     public void OnQuestLogToggle(InputAction.CallbackContext context)
     {
         print("Quest Log Toggled");
@@ -375,5 +388,25 @@ public class PlayerController : MonoBehaviour
         {
             GameEventsManager.Instance.inputEvents.QuestLogTogglePressed();
         }
+    }
+
+    public void ShootPressed()
+    {
+        RangeWeapon weapon = GetComponentInChildren<RangeWeapon>();
+        if (weapon != null)
+        {
+            weapon.Disparar();
+        }
+    
+    }
+    
+    public void OnFireStarted(InputAction.CallbackContext context)
+    {
+        isFiring = true;
+    }
+
+    public void OnFireCanceled(InputAction.CallbackContext context)
+    {
+        isFiring = false;
     }
 }

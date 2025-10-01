@@ -1,37 +1,38 @@
 using UnityEngine;
 using System.Collections;
 
-public class EnemyHealth : MonoBehaviour
+public class EnemyHealth : MonoBehaviour, IDamageable
 {
-    // --- VARIÁVEIS DE CONFIGURAÇÃO ---
+    // --- VARIï¿½VEIS DE CONFIGURAï¿½ï¿½O ---
     [Header("Health Settings")]
-    [SerializeField] private int maxHealth = 3;   // Vida máxima do inimigo, ajustável no Inspector.
+    [SerializeField] private int maxHealth = 3;   // Vida mï¿½xima do inimigo, ajustï¿½vel no Inspector.
     private int currentHealth;                  // Vida atual do inimigo durante o jogo.
 
-    // --- REFERÊNCIAS INTERNAS ---
-    private SpriteRenderer spriteRenderer;      // Referência ao componente que desenha o sprite.
-    private EnemyPatrol patrolScript;           // Referência ao script de patrulha para podermos pará-lo.
-    //private Animator anim;                    // Referência ao componente Animator.
+    // --- REFERï¿½NCIAS INTERNAS ---
+    private SpriteRenderer spriteRenderer;      // Referï¿½ncia ao componente que desenha o sprite.
+    private EnemyPatrol patrolScript;           // Referï¿½ncia ao script de patrulha para podermos parï¿½-lo.
+    //private Animator anim;                    // Referï¿½ncia ao componente Animator.
 
     // Awake corre uma vez, antes do Start.
     void Awake()
     {
-        // Define a vida inicial e "apanha" as referências aos outros componentes.
+        // Define a vida inicial e "apanha" as referï¿½ncias aos outros componentes.
         currentHealth = maxHealth;
         spriteRenderer = GetComponent<SpriteRenderer>();
         patrolScript = GetComponent<EnemyPatrol>();
         //anim = GetComponent<Animator>();
     }
 
-    // Método público chamado pelo script do jogador para causar dano.
-    public void TakeDamage(int damageAmount)
+    // Mï¿½todo pï¿½blico chamado pelo script do jogador para causar dano.
+    public void TakeDamage(int damageAmount, int ownerId)
     {
         currentHealth -= damageAmount;
+        Debug.Log($"{gameObject.name} recebeu {damageAmount} de dano. HP restante: {currentHealth}");
 
         // Verifica se o dano foi fatal.
         if (currentHealth <= 0)
         {
-            // Se a vida acabou, inicia a sequência de morte.
+            // Se a vida acabou, inicia a sequï¿½ncia de morte.
             StartCoroutine(Die());
         }
         else
@@ -54,7 +55,7 @@ public class EnemyHealth : MonoBehaviour
         }
     }
 
-    // Corrotina que orquestra a sequência de morte do inimigo.
+    // Corrotina que orquestra a sequï¿½ncia de morte do inimigo.
     private IEnumerator Die()
     {
         // Inicia o flash de dano para o golpe final.
@@ -65,15 +66,15 @@ public class EnemyHealth : MonoBehaviour
         {
             patrolScript.StopPatrol();
         }
-        // Desativa o colisor para que o corpo morto não possa mais dar ou receber dano.
+        // Desativa o colisor para que o corpo morto nï¿½o possa mais dar ou receber dano.
         GetComponent<Collider2D>().enabled = false;
         // Congela o inimigo no lugar.
         GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
 
-        // A ser ativado na aula: dispara o gatilho da animação de morte.
+        // A ser ativado na aula: dispara o gatilho da animaï¿½ï¿½o de morte.
         // anim.SetTrigger("die");
 
-        // Pausa a corrotina para dar tempo à animação de morte para tocar.
+        // Pausa a corrotina para dar tempo ï¿½ animaï¿½ï¿½o de morte para tocar.
         yield return new WaitForSeconds(1f);
 
         // Apenas no final, remove o objeto do inimigo da cena.

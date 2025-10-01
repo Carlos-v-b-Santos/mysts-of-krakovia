@@ -31,10 +31,11 @@ public class InputEvents
     {
         OnQuestLogTogglePressed?.Invoke();
     }
-    
+
     public event Action<float> OnChangeCameraAngle;
     public void ChangeCameraAngle(float var)
     {
         OnChangeCameraAngle?.Invoke(var);
     }
+
 }
