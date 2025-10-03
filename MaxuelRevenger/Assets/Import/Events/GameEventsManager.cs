@@ -6,7 +6,7 @@ public class GameEventsManager : MonoBehaviour
     public static GameEventsManager Instance { get; private set; }
 
     public InputEvents inputEvents;
-    //public PlayerEvents playerEvents;
+    public PlayerEvents playerEvents;
     //public GoldEvents goldEvents;
     public MiscEvents miscEvents;
     public QuestEvents questEvents;
@@ -21,7 +21,7 @@ public class GameEventsManager : MonoBehaviour
 
         // initialize all events
         inputEvents = new InputEvents();
-        //playerEvents = new PlayerEvents();
+        playerEvents = new PlayerEvents();
         //goldEvents = new GoldEvents();
         miscEvents = new MiscEvents();
         questEvents = new QuestEvents();

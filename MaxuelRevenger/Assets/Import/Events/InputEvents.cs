@@ -3,8 +3,8 @@ using System;
 
 public class InputEvents
 {
-    public event Action<Vector2> OnMovePressed;
-    public void MovePressed(Vector2 moveDir)
+    public event Action<float> OnMovePressed;
+    public void MovePressed(float moveDir)
     {
         OnMovePressed?.Invoke(moveDir);
     }
@@ -32,10 +32,27 @@ public class InputEvents
         OnQuestLogTogglePressed?.Invoke();
     }
 
-    public event Action<float> OnChangeCameraAngle;
-    public void ChangeCameraAngle(float var)
+    public event Action OnJumpPressed;
+    public void JumpPressed()
     {
-        OnChangeCameraAngle?.Invoke(var);
+        OnJumpPressed?.Invoke();
     }
 
+    public event Action OnShootPressed;
+    public void ShootPressed()
+    {
+        OnShootPressed?.Invoke();
+    }
+
+    public event Action OnShootReleased;
+    public void ShootReleased()
+    {
+        OnShootReleased?.Invoke();
+    }
+
+    public event Action OnAttackPressed;
+    public void AttackPressed()
+    {
+        OnAttackPressed?.Invoke();
+    }
 }

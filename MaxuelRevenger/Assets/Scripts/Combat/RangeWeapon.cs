@@ -12,6 +12,8 @@ public class RangeWeapon : MonoBehaviour
     [Header("Configuração da Arma")]
     [SerializeField] private float cadenciaAtaque = 1f;
     [SerializeField] private int quantidadeMunicao = 12;
+    [SerializeField] private int capacidadeMaximaMunicao = 12;
+    [SerializeField] private int municaoCarregadaPorReload = 12;
     [SerializeField] private float tempoRecarga = 1f;
     [SerializeField] private int tier = 0;
 
@@ -27,23 +29,30 @@ public class RangeWeapon : MonoBehaviour
     // Módulos da arma (Composite Pattern)
     [SerializeField] private List<WeaponModuleSO> fireModules;
 
+    public void SetStats(int PlayerAttack, int PlayerDexterity)
+    {
+        projDano += PlayerAttack;
+        cadenciaAtaque -= PlayerDexterity * 0.05f;
+        if (cadenciaAtaque < 0.1f) cadenciaAtaque = 0.1f; // Limite mínimo de cadência
+    }
+
     void Awake()
     {
         target = GetComponentInChildren<Aim>().transform;
         //UpdateAmmoLabel();
     }
 
-    //public void AddModule(IWeaponModule module)
-    //{
+    public void AddModule(WeaponModuleSO module)
+    {
         //module.SetWeapon(this);
-    //    fireModules.Add(module);
-    //}
+        fireModules.Add(module);
+    }
 
-    //public void RemoveModule(IWeaponModule module)
-    //{
-    //    fireModules.Remove(module);
+    public void RemoveModule(WeaponModuleSO module)
+    {
+        fireModules.Remove(module);
         //module.SetWeapon(null);
-    //}
+    }
 
     public void Disparar(WeaponModuleSO except = null)
     {
@@ -92,18 +101,24 @@ public class RangeWeapon : MonoBehaviour
             }
         }
 
-        StartCoroutine(FireCooldown());
+        podeDisparar = false;
+
+        if (quantidadeMunicao <= 0)
+        {
+            StartCoroutine(Reload());
+        }
+        else
+        {
+            StartCoroutine(FireCooldown());
+        }
+
         //UpdateAmmoLabel();
     }
 
     private IEnumerator FireCooldown()
     {
-        podeDisparar = false;
         yield return new WaitForSeconds(cadenciaAtaque);
         podeDisparar = true;
-
-        if (quantidadeMunicao <= 0)
-            StartCoroutine(Reload());
     }
 
     private IEnumerator Reload()
@@ -111,7 +126,7 @@ public class RangeWeapon : MonoBehaviour
         Debug.Log("Recarregando...");
         isLoadingAmmo = true;
         yield return new WaitForSeconds(tempoRecarga);
-        quantidadeMunicao = 12;
+        quantidadeMunicao = municaoCarregadaPorReload;
         isLoadingAmmo = false;
         podeDisparar = true;
         Debug.Log("Recarga completa!");

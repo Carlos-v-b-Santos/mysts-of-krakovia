@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 public class DialogueManager : MonoBehaviour
 {
-    private PlayerController playerController;
+    private InputManager inputManager;
     private DialogueVariables dialogueVariables;
     private InkExternalFunctions inkExternalFunctions;
 
@@ -76,7 +76,7 @@ public class DialogueManager : MonoBehaviour
         instance = this;
 
         // Verificar se Singleton pattern encaixa em jogo online/multiplayer
-        playerController = PlayerController.GetInstance();
+        inputManager = InputManager.GetInstance();
 
         dialogueVariables = new DialogueVariables(loadGlobalsJSON);
         inkExternalFunctions = new InkExternalFunctions();
@@ -146,15 +146,16 @@ public class DialogueManager : MonoBehaviour
         // NOTE: The 'currentStory.currentChoiecs.Count == 0' part was to fix a bug after the Youtube video was made
         if (canContinueToNextLine
             && currentStory.currentChoices.Count == 0
-            && playerController.GetSubmitPressed())
+            && inputManager.GetSubmitPressed())
         {
+            print("Submit pressed");
             ContinueStory();
         }
     }
 
     public void EnterDialogueMode(TextAsset inkJSON)//, Animator emoteAnimator) 
     {
-        playerController.EnterMenuMode();
+        inputManager.EnterMenuMode();
 
         currentStory = new Story(inkJSON.text);
         DialogueIsPlaying = true;
@@ -185,7 +186,7 @@ public class DialogueManager : MonoBehaviour
         // go back to default audio
         SetCurrentAudioInfo(defaultAudioInfo.id);
 
-        playerController.EnterGameplayMode();
+        inputManager.EnterGameplayMode();
     }
 
     private void ContinueStory()
@@ -234,7 +235,7 @@ public class DialogueManager : MonoBehaviour
         foreach (char letter in line.ToCharArray())
         {
             // if the submit button is pressed, finish up displaying the line right away
-            if (playerController.GetSubmitPressed())
+            if (inputManager.GetSubmitPressed())
             {
                 dialogueText.maxVisibleCharacters = line.Length;
                 break;
@@ -407,7 +408,7 @@ public class DialogueManager : MonoBehaviour
         {
             currentStory.ChooseChoiceIndex(choiceIndex);
             // NOTE: The below two lines were added to fix a bug after the Youtube video was made
-            playerController.RegisterSubmitPressed(); // this is specific to my PlayerController script
+            inputManager.RegisterSubmitPressed(); // this is specific to my PlayerController script
             ContinueStory();
         }
     }

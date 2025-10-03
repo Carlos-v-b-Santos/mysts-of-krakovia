@@ -7,7 +7,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
     [Header("Health Settings")]
     [SerializeField] private int maxHealth = 3;   // Vida m�xima do inimigo, ajust�vel no Inspector.
     private int currentHealth;                  // Vida atual do inimigo durante o jogo.
-
+    [SerializeField] private int xpReward = 20;   // Quantidade de XP concedida ao jogador ao derrotar este inimigo.
     // --- REFER�NCIAS INTERNAS ---
     private SpriteRenderer spriteRenderer;      // Refer�ncia ao componente que desenha o sprite.
     private EnemyPatrol patrolScript;           // Refer�ncia ao script de patrulha para podermos par�-lo.
@@ -78,6 +78,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         yield return new WaitForSeconds(1f);
 
         // Apenas no final, remove o objeto do inimigo da cena.
+        GameEventsManager.Instance.playerEvents.XPReceived(xpReward);
         Destroy(gameObject);
     }
 }

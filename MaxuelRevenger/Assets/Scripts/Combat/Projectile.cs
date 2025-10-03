@@ -4,24 +4,23 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     //[Header("Configuração do Projétil")]
-    [SerializeField] public float speed = 1f;
-    [SerializeField] public float duration = 3f;
-    [SerializeField] public int damage = 1;
-    [SerializeField] public int ownerId = -1;
+    public float speed;
+    public float duration;
+    public int damage;
+    public int ownerId;
 
-    [SerializeField] private Vector2 direction;
+    private Vector2 direction;
 
     Rigidbody2D rb2D;
 
     void Awake()
     {
         rb2D = GetComponent<Rigidbody2D>();
-        // Destruir projétil após "duracao" segundos
-
     }
 
     void Start()
     {
+        // Destruir projétil após "duracao" segundos
         Destroy(gameObject, duration);
     }
 
@@ -30,7 +29,6 @@ public class Projectile : MonoBehaviour
         // Movimento do projétil
         //transform.position += (Vector3)(direction * speed * Time.deltaTime);
         rb2D.velocity = direction.normalized * speed;
-
     }
 
     /// <summary>

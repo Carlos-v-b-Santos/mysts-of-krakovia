@@ -52,85 +52,66 @@ public class PlayerController : MonoBehaviour
 
     private bool isFiring;
 
-    public bool SubmitPressed { get; private set; } //confirmar opções nos dialogos
-    public bool InteractPressed { get; private set; } //interagir com npcs e objetos
+    InputManager inputManager;
 
-    private static PlayerController instance;
-    public static PlayerController GetInstance()
-    {
-        return instance;
-    }
+    PlayerStatsRuntime playerStats;
+    RangeWeapon weapon;
 
     // Awake corre uma vez, antes do Start. Ideal para inicializar refer�ncias.
     private void Awake()
     {
-        if (instance != null)
-        {
-            Debug.LogError("Found more than one Player Locomotion Input in the scene.");
-        }
-        instance = this;
-
         // "Apanha" os componentes que est�o no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
 
         // Cria e ativa o nosso mapa de inputs.
-        playerControls = new PlayerControls();
+        //playerControls = new PlayerControls();
+        inputManager = InputManager.GetInstance();
+        inputManager.EnterGameplayMode();
+        //playerControls.Gameplay.Enable();
 
         // Define a vida inicial.
         currentHealth = maxHealth;
+
+        playerStats = GetComponent<PlayerStatsRuntime>();
+
+        weapon = GetComponentInChildren<RangeWeapon>();
+        weapon.SetStats(playerStats.attack, playerStats.dexterity);
     }
 
     // OnEnable corre quando o objeto � ativado. Perfeito para "inscrever-se" em eventos.
     private void OnEnable()
     {
-        playerControls.Gameplay.Enable();
-        EnterGameplayMode();
-        // Diz ao sistema de input: "Quando a a��o 'Jump' for executada, chame o m�todo Jump()".
-        playerControls.Gameplay.Jump.performed += Jump;
-        playerControls.Gameplay.Attack.performed += Attack;
-        playerControls.Gameplay.Interact.performed += ctx => RegisterInteractPressed(ctx);
-        playerControls.Gameplay.QuestLogToggle.performed += ctx => OnQuestLogToggle(ctx);
-        playerControls.Gameplay.Shoot.started += OnFireStarted;
-        playerControls.Gameplay.Shoot.canceled += OnFireCanceled;
-        playerControls.UI.Submit.performed += ctx => SubmitPressed = true;
-
+        GameEventsManager.Instance.inputEvents.OnJumpPressed += Jump;
+        GameEventsManager.Instance.inputEvents.OnAttackPressed += Attack;
+        GameEventsManager.Instance.inputEvents.OnShootPressed += OnFireStarted;
+        GameEventsManager.Instance.inputEvents.OnShootReleased += OnFireCanceled;
+        GameEventsManager.Instance.inputEvents.OnMovePressed += MovePressed;
     }
 
     // OnDisable corre quando o objeto � desativado. Limpamos as inscri��es para evitar erros.
     private void OnDisable()
     {
-        playerControls.Gameplay.Disable();
-        playerControls.Gameplay.Jump.performed -= Jump;
-        playerControls.Gameplay.Attack.performed -= Attack;
-        playerControls.Gameplay.Interact.performed -= ctx => RegisterInteractPressed(ctx);
-        playerControls.Gameplay.QuestLogToggle.performed -= ctx => OnQuestLogToggle(ctx);
-        playerControls.Gameplay.Shoot.started -= OnFireStarted;
-        playerControls.Gameplay.Shoot.canceled -= OnFireCanceled;
-        playerControls.UI.Submit.performed -= ctx => SubmitPressed = true;
-    }
-
-    // Update corre a cada frame. Ideal para ler inputs e l�gica visual.
-    private void Update()
-    {
-
-
-
+        GameEventsManager.Instance.inputEvents.OnJumpPressed -= Jump;
+        GameEventsManager.Instance.inputEvents.OnAttackPressed -= Attack;
+        GameEventsManager.Instance.inputEvents.OnShootPressed -= OnFireStarted;
+        GameEventsManager.Instance.inputEvents.OnShootReleased -= OnFireCanceled;
+        GameEventsManager.Instance.inputEvents.OnMovePressed -= MovePressed;
     }
 
     // FixedUpdate corre a um ritmo fixo, sincronizado com a f�sica.
     private void FixedUpdate()
     {
         // Apenas l� o input de movimento se o jogador tiver controlo.
-        if (canMove)
-        {
-            moveInput.x = playerControls.Gameplay.Move.ReadValue<float>();
-        }
-        else
-        {
-            moveInput.x = 0;
-        }
+        //if (canMove)
+        //{
+            //moveInput.x = playerControls.Gameplay.Move.ReadValue<float>();
+        //}
+        //else
+        //{
+        //    moveInput.x = 0;
+        //}
 
         CheckIfGrounded();
 
@@ -159,14 +140,14 @@ public class PlayerController : MonoBehaviour
         }
 
         // Comunica��o com o Animator (a ser ativada na aula).
-            anim.SetBool("isJumping", !isGrounded);
+        anim.SetBool("isJumping", !isGrounded);
         anim.SetFloat("speed", Mathf.Abs(moveInput.x));
         anim.SetFloat("velocityY", rb.velocity.y);
     }
 
 
     // M�todo chamado pelo evento de input "Jump".
-    private void Jump(InputAction.CallbackContext context)
+    private void Jump()
     {
         // A condi��o impede o "pulo duplo".
         if (isGrounded)
@@ -275,7 +256,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // M�todo chamado pelo evento de input "Attack".
-    private void Attack(InputAction.CallbackContext context)
+    private void Attack()
     {
         if (canMove && canAttack)
         {
@@ -311,68 +292,15 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere(attackPoint.position, attackRange);
     }
 
-    public bool GetSubmitPressed()
-    {
-        bool result = SubmitPressed;
-        SubmitPressed = false;
-        return result;
-    }
-
-    public void EnterMenuMode()
-    {
-        DisablePlayerControls();
-        EnableUIControls();
-    }
-
-    public void EnterGameplayMode()
-    {
-        EnablePlayerControls();
-        DisableUIControls();
-    }
-
-    private void EnablePlayerControls()
-    {
-        playerControls.Gameplay.Enable();
-        //Controls.Gameplay.SetCallbacks(this);
-    }
-
-    private void DisablePlayerControls()
-    {
-        playerControls.Gameplay.Disable();
-        //Controls.Gameplay.RemoveCallbacks(this);
-    }
-
-    private void EnableUIControls()
-    {
-        print("Enable UI Controls");
-        playerControls.UI.Enable();
-        //playerControls.UI.Submit.performed += ctx => SubmitPressed = true;
-        //print(SubmitPressed);
-        //Controls.UI.SetCallbacks(this);
-    }
-
-    private void DisableUIControls()
-    {
-        playerControls.UI.Disable();
-        //playerControls.UI.Submit.performed -= ctx => SubmitPressedAgain();
-        //Controls.UI.RemoveCallbacks(this);
-    }
-
-    public void RegisterSubmitPressed()
-    {
-        SubmitPressed = false;
-    }
-
-    private void RegisterInteractPressed(InputAction.CallbackContext context)
-    {
-        if (context.performed)
-        {
-            InteractPressed = true;
-            GameEventsManager.Instance.inputEvents.InteractPressed();
-            InteractPressed = false;
-        }
-
-    }
+    //private void RegisterInteractPressed(InputAction.CallbackContext context)
+    //{
+    //    if (context.performed)
+    //    {
+    //        InteractPressed = true;
+    //        GameEventsManager.Instance.inputEvents.InteractPressed();
+    //        InteractPressed = false;
+    //    }
+    //}
 
     //public bool GetInteractPressed()
     //{
@@ -381,32 +309,37 @@ public class PlayerController : MonoBehaviour
     //    return result;
     //}
 
-    public void OnQuestLogToggle(InputAction.CallbackContext context)
-    {
-        print("Quest Log Toggled");
-        if (context.performed)
-        {
-            GameEventsManager.Instance.inputEvents.QuestLogTogglePressed();
-        }
-    }
+    //public void OnQuestLogToggle(InputAction.CallbackContext context)
+    //{
+    //    print("Quest Log Toggled");
+    //    if (context.performed)
+    //    {
+    //        GameEventsManager.Instance.inputEvents.QuestLogTogglePressed();
+    //    }
+    //}
 
     public void ShootPressed()
     {
-        RangeWeapon weapon = GetComponentInChildren<RangeWeapon>();
+        
         if (weapon != null)
         {
             weapon.Disparar();
         }
-    
+
     }
-    
-    public void OnFireStarted(InputAction.CallbackContext context)
+
+    public void OnFireStarted()
     {
         isFiring = true;
     }
 
-    public void OnFireCanceled(InputAction.CallbackContext context)
+    public void OnFireCanceled()
     {
         isFiring = false;
+    }
+    
+    public void MovePressed(float direction)
+    {
+        moveInput.x = direction;
     }
 }
