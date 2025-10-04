@@ -29,6 +29,10 @@ public class RangeWeapon : MonoBehaviour
     // Módulos da arma (Composite Pattern)
     [SerializeField] private List<WeaponModuleSO> fireModules;
 
+    void OnEnable()
+    {
+    }
+
     public void SetStats(int PlayerAttack, int PlayerDexterity)
     {
         projDano += PlayerAttack;

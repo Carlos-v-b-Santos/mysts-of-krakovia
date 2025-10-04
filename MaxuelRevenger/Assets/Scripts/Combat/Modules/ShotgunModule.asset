@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   numPellets: 5
   spreadAngleDeg: 30
-  duracaoModify: 0.1
+  duracaoModify: 1
   velocidadeModify: 0.2

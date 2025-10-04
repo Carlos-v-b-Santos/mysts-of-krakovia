@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class InputManager : MonoBehaviour, PlayerControls.IGameplayActions, PlayerControls.IUIActions
 {
@@ -79,6 +80,13 @@ public class InputManager : MonoBehaviour, PlayerControls.IGameplayActions, Play
         if (context.performed)
         {
             Debug.Log("Shoot performed");
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            {
+                // Ignore shoot input if the pointer is over a UI element
+                Debug.Log("Pointer is over UI, ignoring shoot input");
+                return;
+            }
+
             GameEventsManager.Instance.inputEvents.ShootPressed();
         }
         else if (context.canceled)

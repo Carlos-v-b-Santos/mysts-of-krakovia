@@ -9,6 +9,9 @@ public class PlayerStats : ScriptableObject
     [SerializeField] private int current_health = 100;
     [SerializeField] private int max_mana = 50;
     [SerializeField] private int current_mana = 50;
+
+    [SerializeField] private int health = 1;
+    [SerializeField] private int mana = 1;
     [SerializeField] private int attack = 1;
     [SerializeField] private int defense = 1;
     [SerializeField] private int speed = 1; // velocidade de movimento

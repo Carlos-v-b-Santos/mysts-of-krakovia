@@ -77,7 +77,7 @@ public class PlayerController : MonoBehaviour
         playerStats = GetComponent<PlayerStatsRuntime>();
 
         weapon = GetComponentInChildren<RangeWeapon>();
-        weapon.SetStats(playerStats.attack, playerStats.dexterity);
+        
     }
 
     // OnEnable corre quando o objeto � ativado. Perfeito para "inscrever-se" em eventos.
@@ -136,6 +136,7 @@ public class PlayerController : MonoBehaviour
 
         if (isFiring)
         {
+            weapon.SetStats(playerStats.attack, playerStats.dexterity);
             ShootPressed();
         }
 
