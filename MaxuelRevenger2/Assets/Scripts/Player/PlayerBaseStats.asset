@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb8e0b30c243e904297c4435743a434e, type: 3}
+  m_Name: PlayerBaseStats
+  m_EditorClassIdentifier: 
+  max_health: 100
+  current_health: 100
+  max_mana: 50
+  current_mana: 50
+  health: 1
+  mana: 1
+  attack: 1
+  defense: 1
+  speed: 1
+  wisdom: 1
+  dexterity: 1
+  vitality: 1
+  moveSpeed: 8
+  jumpForce: 6
+  maxHealth: 3
+  knockbackForce: 10
+  attackRange: 2.3
+  attackCooldown: 0.5
+  canMove: 1
