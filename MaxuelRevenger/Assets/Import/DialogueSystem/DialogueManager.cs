@@ -53,11 +53,22 @@ public class DialogueManager : MonoBehaviour
 
     private void OnEnable()
     {
+        // Garante que a instância do InputManager existe antes de se inscrever
+        if (PlayerInputManager.GetInstance() != null)
+        {
+            PlayerInputManager.GetInstance().OnSubmitPressed += OnSubmitAction;
+        }
+
         GameEventsManager.Instance.questEvents.OnQuestStateChange += QuestStateChange;
     }
 
     private void OnDisable()
     {
+        if (PlayerInputManager.GetInstance() != null)
+        {
+            PlayerInputManager.GetInstance().OnSubmitPressed -= OnSubmitAction;
+        }
+
         GameEventsManager.Instance.questEvents.OnQuestStateChange -= QuestStateChange;
     }
 
@@ -77,7 +88,6 @@ public class DialogueManager : MonoBehaviour
 
         // Verificar se Singleton pattern encaixa em jogo online/multiplayer
         inputManager = PlayerInputManager.GetInstance();
-
         dialogueVariables = new DialogueVariables(loadGlobalsJSON);
         inkExternalFunctions = new InkExternalFunctions();
 
@@ -94,11 +104,7 @@ public class DialogueManager : MonoBehaviour
     {
         DialogueIsPlaying = false;
         dialoguePanel.SetActive(false);
-
-        // get the layout animator
         layoutAnimator = dialoguePanel.GetComponent<Animator>();
-
-        // get all of the choices text 
         choicesText = new TextMeshProUGUI[choices.Length];
         int index = 0;
         foreach (GameObject choice in choices)
@@ -106,7 +112,6 @@ public class DialogueManager : MonoBehaviour
             choicesText[index] = choice.GetComponentInChildren<TextMeshProUGUI>();
             index++;
         }
-
         InitializeAudioInfoDictionary();
     }
 
@@ -137,18 +142,44 @@ public class DialogueManager : MonoBehaviour
     private void Update()
     {
         // return right away if dialogue isn't playing
+       // if (!DialogueIsPlaying)
+       // {
+        //    return;
+       // }
+
+        // handle continuing to the next line in the dialogue when submit is pressed
+        // NOTE: The 'currentStory.currentChoiecs.Count == 0' part was to fix a bug after the Youtube video was made
+        //if (canContinueToNextLine
+         //   && currentStory.currentChoices.Count == 0
+         //   && inputManager.GetSubmitPressed())
+       // {
+         //   print("Submit pressed");
+         //  ContinueStory();
+       // }
+    }
+
+    // --- NOVO MÉTODO DE REAÇÃO AO EVENTO ---
+    // Este método é chamado automaticamente pelo evento OnSubmitPressed do InputManager.
+    private void OnSubmitAction()
+    {
+        // Só faça algo se o diálogo estiver a decorrer.
         if (!DialogueIsPlaying)
         {
             return;
         }
 
-        // handle continuing to the next line in the dialogue when submit is pressed
-        // NOTE: The 'currentStory.currentChoiecs.Count == 0' part was to fix a bug after the Youtube video was made
-        if (canContinueToNextLine
-            && currentStory.currentChoices.Count == 0
-            && inputManager.GetSubmitPressed())
+        // Se a linha ainda estiver a ser escrita (efeito de "máquina de escrever"),
+        // para a corrotina e mostra o texto todo imediatamente.
+        if (displayLineCoroutine != null)
         {
-            print("Submit pressed");
+            StopCoroutine(displayLineCoroutine);
+            dialogueText.maxVisibleCharacters = dialogueText.text.Length;
+            // Chama um método auxiliar para finalizar a linha
+            FinishDisplayingLine();
+        }
+        // Se a linha já terminou e podemos continuar (e não há escolhas), avança a história.
+        else if (canContinueToNextLine && currentStory.currentChoices.Count == 0)
+        {
             ContinueStory();
         }
     }
@@ -193,21 +224,17 @@ public class DialogueManager : MonoBehaviour
     {
         if (currentStory.canContinue)
         {
-            // set text for the current dialogue line
             if (displayLineCoroutine != null)
             {
                 StopCoroutine(displayLineCoroutine);
             }
             string nextLine = currentStory.Continue();
-            // handle case where the last line is an external function
             if (nextLine.Equals("") && !currentStory.canContinue)
             {
                 StartCoroutine(ExitDialogueMode());
             }
-            // otherwise, handle the normal case for continuing the story
             else
             {
-                // handle tags
                 HandleTags(currentStory.currentTags);
                 displayLineCoroutine = StartCoroutine(DisplayLine(nextLine));
             }
@@ -234,14 +261,6 @@ public class DialogueManager : MonoBehaviour
         // display each letter one at a time
         foreach (char letter in line.ToCharArray())
         {
-            // if the submit button is pressed, finish up displaying the line right away
-            if (inputManager.GetSubmitPressed())
-            {
-                dialogueText.maxVisibleCharacters = line.Length;
-                break;
-            }
-
-            // check for rich text tag, if found, add it without waiting
             if (letter == '<' || isAddingRichTextTag)
             {
                 isAddingRichTextTag = true;
@@ -259,11 +278,16 @@ public class DialogueManager : MonoBehaviour
             }
         }
 
-        // actions to take after the entire line has finished displaying
+        FinishDisplayingLine();
+    }
+    // --- NOVO MÉTODO AUXILIAR ---
+    private void FinishDisplayingLine()
+    {
+        // Ações que acontecem quando a linha termina
         continueIcon.SetActive(true);
         DisplayChoices();
-
         canContinueToNextLine = true;
+        displayLineCoroutine = null; // Limpa a referência para que saibamos que a escrita terminou.
     }
 
     private void PlayDialogueSound(int currentDisplayedCharacterCount, char currentCharacter)
@@ -407,8 +431,7 @@ public class DialogueManager : MonoBehaviour
         if (canContinueToNextLine)
         {
             currentStory.ChooseChoiceIndex(choiceIndex);
-            // NOTE: The below two lines were added to fix a bug after the Youtube video was made
-            inputManager.RegisterSubmitPressed(); // this is specific to my PlayerController script
+            // A linha "inputManager.RegisterSubmitPressed()" foi removida, pois já não é necessária.
             ContinueStory();
         }
     }

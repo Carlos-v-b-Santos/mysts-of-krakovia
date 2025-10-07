@@ -5,19 +5,19 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "PlayerStats", menuName = "ScriptableObjects/PlayerStats", order = 1)]
 public class PlayerStats : ScriptableObject
 {
-    [SerializeField] private int max_health = 100;
-    [SerializeField] private int current_health = 100;
-    [SerializeField] private int max_mana = 50;
-    [SerializeField] private int current_mana = 50;
+    [SerializeField] public int max_health = 100;
+    [SerializeField] public int current_health = 100;
+    [SerializeField] public int max_mana = 50;
+    [SerializeField] public int current_mana = 50;
 
-    [SerializeField] private int health = 1;
-    [SerializeField] private int mana = 1;
-    [SerializeField] private int attack = 1;
-    [SerializeField] private int defense = 1;
-    [SerializeField] private int speed = 1; // velocidade de movimento
-    [SerializeField] private int wisdom = 1; // regen de mana
-    [SerializeField] private int dexterity = 1; // velocidade de ataque
-    [SerializeField] private int vitality = 1; // regen de vida
+    [SerializeField] public int health = 1;
+    [SerializeField] public int mana = 1;
+    [SerializeField] public int attack = 1;
+    [SerializeField] public int defense = 1;
+    [SerializeField] public int speed = 1; // velocidade de movimento
+    [SerializeField] public int wisdom = 1; // regen de mana
+    [SerializeField] public int dexterity = 1; // velocidade de ataque
+    [SerializeField] public int vitality = 1; // regen de vida
 
     [Header("Movement")]
     public float moveSpeed = 8f;

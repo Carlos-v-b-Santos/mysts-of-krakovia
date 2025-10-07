@@ -1,97 +1,121 @@
-using System.Collections;
 using UnityEngine;
+using Unity.Netcode;
+using System.Collections;
 
+// Este script não precisa de ser um NetworkBehaviour, pois a sua lógica
+// será controlada pelo PlayerController, que já verifica o IsOwner.
+// No entanto, para acesso a propriedades de rede no futuro, pode ser útil.
 public class PlayerMotor : MonoBehaviour
 {
-    private PlayerController player;
-    private Rigidbody2D rb;
-    private SpriteRenderer spriteRenderer;
-    private PlayerInputManager inputManager;
+    [Header("Referências")]
+    [SerializeField] private Rigidbody2D rb;
+    [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private Transform attackPivot;
+    [SerializeField] private PlayerStatsRuntime playerStats; // Referência para ler os stats
 
-    [Header("Ground Check")]
+    [Header("Configurações de Movimento")]
+    [SerializeField] private float jumpForce = 15f;
+
+    [Header("Verificação de Chão")]
     [SerializeField] private Transform groundCheckPoint;
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckRadius = 0.2f;
 
-    [Header("Knockback")]
+    [Header("Configurações de Knockback")]
+    [SerializeField] private float knockbackForce = 5f;
     [SerializeField] private float knockbackAirGravityScale = 4f;
 
-    public bool IsGrounded { get; private set; }
+    // Referência para o nosso script de input
+    private PlayerController player;
+    private PlayerInput playerInput;
+
+    // Variáveis de estado
+    private Vector2 moveInput;
+    public bool isGrounded { get; private set; }
     public bool CanMove { get; private set; } = true;
     private float originalGravityScale;
-    private Vector2 moveInput;
 
     private void Awake()
     {
+        // Apanha a referência para o PlayerInput que está no mesmo GameObject.
         player = GetComponent<PlayerController>();
-        rb = player.rb;
-        spriteRenderer = player.spriteRenderer;
+        playerInput = GetComponent<PlayerInput>();
         originalGravityScale = rb.gravityScale;
-        inputManager = PlayerInputManager.GetInstance(); // Pega a instância do seu Input Manager
     }
 
     private void OnEnable()
     {
-        // Inscreve o método Jump no evento de pulo
-        GameEventsManager.Instance.inputEvents.OnJumpPressed += Jump;
-        GameEventsManager.Instance.inputEvents.OnMovePressed += SetMoveDirection;
+        // Inscreve-se nos eventos LOCAIS do PlayerInput para saber quando agir.
+        playerInput.OnMoveEvent += HandleMove;
+        playerInput.OnJumpPressed += HandleJump;
     }
 
     private void OnDisable()
     {
-        // Limpa a inscrição para evitar erros
-        GameEventsManager.Instance.inputEvents.OnJumpPressed -= Jump;
-        GameEventsManager.Instance.inputEvents.OnMovePressed -= SetMoveDirection;
+        // Limpa a inscrição para evitar erros.
+        playerInput.OnMoveEvent -= HandleMove;
+        playerInput.OnJumpPressed -= HandleJump;
     }
 
-    private void SetMoveDirection(float direction)
-    {
-        moveInput.x = direction;
-    }
-
+    // FixedUpdate é o local correto para toda a lógica de física.
     private void FixedUpdate()
     {
         CheckIfGrounded();
+
+        // Se o jogador tiver controlo, aplica o movimento.
         if (CanMove)
         {
-            Move();
+            // Usa o atributo "speed" do PlayerStatsRuntime.
+            rb.velocity = new Vector2(moveInput.x * player.stats.speed, rb.velocity.y);
         }
     }
 
-    private void Move()
+    // Este método é chamado pelo evento OnMove do PlayerInput. A sua única função é guardar a direção.
+    private void HandleMove(float direction)
     {
-        rb.velocity = new Vector2(moveInput.x * player.stats.moveSpeed, rb.velocity.y);
-        Flip(moveInput.x);
+        if (CanMove)
+        {
+            moveInput.x = direction;
+            Flip(direction);
+        }
+        else
+        {
+            moveInput.x = 0;
+        }
     }
 
-    private void Flip(float moveDirection)
+    // Este método é chamado pelo evento OnJumpPressed do PlayerInput.
+    private void HandleJump()
     {
-        if (moveDirection > 0)
+        // A condição para saltar é estar no chão e ter controlo.
+        if (isGrounded && CanMove)
+        {
+            // O motor só se preocupa com a física, não com a animação.
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        }
+    }
+
+    // Inverte o sprite e o pivô de ataque com base na direção.
+    private void Flip(float direction)
+    {
+        if (direction > 0)
         {
             spriteRenderer.flipX = false;
-            player.combat.attackPivot.localScale = Vector3.one;
+            attackPivot.localScale = Vector3.one;
         }
-        else if (moveDirection < 0)
+        else if (direction < 0)
         {
             spriteRenderer.flipX = true;
-            player.combat.attackPivot.localScale = new Vector3(-1, 1, 1);
-        }
-    }
-
-    private void Jump()
-    {
-        if (IsGrounded && CanMove)
-        {
-            rb.velocity = new Vector2(rb.velocity.x, 0);
-            rb.AddForce(Vector2.up * player.stats.jumpForce, ForceMode2D.Impulse);
+            attackPivot.localScale = new Vector3(-1, 1, 1);
         }
     }
 
     private void CheckIfGrounded()
     {
-        IsGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
+        isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
     }
 
+    // A corrotina de knockback, que é uma ação puramente física, vive aqui.
     public IEnumerator KnockbackCoroutine(Transform enemyTransform)
     {
         CanMove = false;
@@ -100,20 +124,19 @@ public class PlayerMotor : MonoBehaviour
         Vector2 knockbackDirection = (transform.position - enemyTransform.position).normalized;
         rb.AddForce(knockbackDirection * player.stats.knockbackForce, ForceMode2D.Impulse);
 
-        if (!IsGrounded)
+        if (isGrounded)
+        {
+            yield return new WaitForSeconds(0.4f); // Duração do "stun" no chão
+        }
+        else
         {
             rb.gravityScale = knockbackAirGravityScale;
+            yield return new WaitForFixedUpdate();
+            while (!isGrounded)
+            {
+                yield return new WaitForFixedUpdate();
+            }
         }
-
-        // Failsafe: Espera até estar no chão OU por no máximo 1.5 segundos
-        float timer = 0f;
-        while (!IsGrounded && timer < 1.5f)
-        {
-            timer += Time.deltaTime;
-            yield return null;
-        }
-
-        yield return new WaitForSeconds(0.1f);
 
         rb.gravityScale = originalGravityScale;
         CanMove = true;

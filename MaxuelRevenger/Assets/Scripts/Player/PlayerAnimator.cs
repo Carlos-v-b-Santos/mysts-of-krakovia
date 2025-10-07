@@ -2,60 +2,88 @@ using UnityEngine;
 
 public class PlayerAnimator : MonoBehaviour
 {
-    private PlayerController player;
-    private Animator anim;
-    private Rigidbody2D rb;
+    [Header("Referências")]
+    [SerializeField] private PlayerController player; // Referência ao Hub do Player
+    [SerializeField] private Animator anim;
+    [SerializeField] private Rigidbody2D rb;
 
+    // Usar Animator.StringToHash é uma ótima otimização para evitar o uso de strings em Update.
     private readonly int isJumpingHash = Animator.StringToHash("isJumping");
     private readonly int speedHash = Animator.StringToHash("speed");
     private readonly int velocityYHash = Animator.StringToHash("velocityY");
     private readonly int jumpTriggerHash = Animator.StringToHash("jump");
     private readonly int attackTriggerHash = Animator.StringToHash("attack");
     private readonly int dieTriggerHash = Animator.StringToHash("die");
+    private readonly int hurtTriggerHash = Animator.StringToHash("hurt"); // Adicione um parâmetro "hurt" ao seu Animator se ainda não o fez
 
+    // Awake é usado para obter as referências via Hub.
     private void Awake()
     {
-        player = GetComponent<PlayerController>();
-        anim = player.anim;
-        rb = player.rb;
+        // Se as referências não forem definidas no Inspector, pegue-as através do Hub.
+        if (player == null) player = GetComponent<PlayerController>();
+        if (anim == null) anim = player.anim;
+        if (rb == null) rb = player.rb;
     }
 
+    // OnEnable é onde nos inscrevemos para "ouvir" os outros especialistas.
     private void OnEnable()
     {
-        // Ouve os eventos para disparar animações de ação única
-        GameEventsManager.Instance.inputEvents.OnJumpPressed += TriggerJumpAnimation;
-        GameEventsManager.Instance.inputEvents.OnAttackPressed += TriggerAttackAnimation;
+        // Ouve os eventos de input para disparar animações de ação única.
+        player.input.OnJumpPressed += TriggerJumpAnimation;
+        player.input.OnAttackPressed += TriggerAttackAnimation;
+
+        // Ouve os eventos de vida para as reações de dano e morte.
+        player.health.OnHurt += TriggerHurtAnimation;
+        player.health.OnDie += TriggerDieAnimation;
     }
 
+    // Limpa as inscrições quando o objeto é desativado.
     private void OnDisable()
     {
-        GameEventsManager.Instance.inputEvents.OnJumpPressed -= TriggerJumpAnimation;
-        GameEventsManager.Instance.inputEvents.OnAttackPressed -= TriggerAttackAnimation;
+        player.input.OnJumpPressed -= TriggerJumpAnimation;
+        player.input.OnAttackPressed -= TriggerAttackAnimation;
+
+        player.health.OnHurt -= TriggerHurtAnimation;
+        player.health.OnDie -= TriggerDieAnimation;
     }
 
-    void Update()
+    // Update é usado para parâmetros que mudam constantemente (polling).
+    private void Update()
     {
-        // Atualiza animações baseadas no estado (movimento, pulo, etc.)
-        anim.SetBool(isJumpingHash, !player.motor.IsGrounded);
-        anim.SetFloat(speedHash, Mathf.Abs(rb.velocity.x)); // Usa a velocidade real do Rigidbody
+        // O componente Animator da Unity sincroniza parâmetros básicos (Float, Bool, Trigger)
+        // automaticamente quando está num NetworkObject. Esta lógica pode correr em todas as instâncias.
+
+        // Atualiza as animações com base no estado físico do PlayerMotor e Rigidbody2D.
+        anim.SetBool(isJumpingHash, !player.motor.isGrounded);
+        anim.SetFloat(speedHash, Mathf.Abs(rb.velocity.x));
         anim.SetFloat(velocityYHash, rb.velocity.y);
     }
 
-    // Métodos públicos para serem chamados por eventos ou outros scripts
-    public void TriggerJumpAnimation()
+    // --- MÉTODOS CHAMADOS PELOS EVENTOS ---
+
+    private void TriggerJumpAnimation()
     {
-        if (player.motor.IsGrounded) // Só dispara a animação se estiver no chão
-            anim.SetTrigger(jumpTriggerHash);
+        anim.SetTrigger(jumpTriggerHash);
     }
 
     public void TriggerAttackAnimation()
     {
-        if (player.motor.CanMove)
+        anim.SetTrigger(attackTriggerHash);
+        // A animação do "slash" visual também é uma responsabilidade do Animator.
+        if (player.combat.slashAnimator != null)
         {
-            anim.SetTrigger(attackTriggerHash);
             player.combat.slashAnimator.SetTrigger("attack");
         }
     }
 
-    public void TriggerDieAnimation() => anim.SetTrigger(dieTriggerHash);
+    // O parâmetro 'enemyTransform' é enviado pelo evento, mas não precisamos dele aqui, apenas da notificação.
+    public void TriggerHurtAnimation(Transform enemyTransform)
+    {
+        anim.SetTrigger(hurtTriggerHash);
+    }
+
+    public void TriggerDieAnimation(Transform enemyTransform)
+    {
+        anim.SetTrigger(dieTriggerHash);
+    }
 }

@@ -1,13 +1,12 @@
 using UnityEngine;
 using TMPro;
-using Ink.Parsed;
-using Unity.VisualScripting;
 
 public class AttributePanelUI : MonoBehaviour
 {
-    [SerializeField] private PlayerStatsRuntime playerStats; // referência ao jogador
+    // A referência agora é para o PlayerStatsRuntime do jogador LOCAL.
+    // Precisamos de uma forma de encontrar o jogador local.
+    private PlayerStatsRuntime localPlayerStats;
 
-    [SerializeField] private int pointsForAttributes = 0;
     [SerializeField] private TextMeshProUGUI pointsForAttributesText;
     [SerializeField] private TextMeshProUGUI hpPointsText;
     [SerializeField] private TextMeshProUGUI mpPointsText;
@@ -18,29 +17,41 @@ public class AttributePanelUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI dexPointsText;
     [SerializeField] private TextMeshProUGUI vitPointsText;
 
-
-    void OnEnable()
+    // Tenta encontrar o jogador local e inscreve-se nos seus eventos.
+    public void Initialize()
     {
-        GameEventsManager.Instance.playerEvents.OnLevelUp += UpdateAttributePanel;
-        GameEventsManager.Instance.playerEvents.OnAttributeChanged += UpdateAttributePanel;
-    }
-
-    void OnDisable()
-    {
-        GameEventsManager.Instance.playerEvents.OnLevelUp -= UpdateAttributePanel;
-        GameEventsManager.Instance.playerEvents.OnAttributeChanged -= UpdateAttributePanel;
-    }
-
-    void Awake()
-    {
-        UpdateAttributePanel();
-    }
-
-    public void UpdateAttributePanel(int pointsForAttributes = 0)
-    {
-        if (playerStats.available_attribute_points > 0)
+        // Encontra a instância do jogador local que foi definida no PlayerController
+        if (PlayerController.LocalInstance != null)
         {
-            pointsForAttributesText.text = playerStats.available_attribute_points.ToString() + " pontos disponíveis";
+            localPlayerStats = PlayerController.LocalInstance.GetComponent<PlayerStatsRuntime>();
+            if (localPlayerStats != null)
+            {
+                // Inscreve-se no evento para ser notificado quando os stats mudarem.
+                localPlayerStats.OnStatsChanged += UpdateAttributePanel;
+                // Atualiza o painel uma vez no início.
+                UpdateAttributePanel();
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        // Limpa a inscrição para evitar erros.
+        if (localPlayerStats != null)
+        {
+            localPlayerStats.OnStatsChanged -= UpdateAttributePanel;
+        }
+    }
+
+    // Este método agora é chamado pelo evento OnStatsChanged.
+    public void UpdateAttributePanel()
+    {
+        if (localPlayerStats == null) return;
+
+        // --- CORREÇÃO: Usamos .Value para ler o valor das NetworkVariables ---
+        if (localPlayerStats.available_attribute_points.Value > 0)
+        {
+            pointsForAttributesText.text = localPlayerStats.available_attribute_points.Value.ToString() + " pontos disponíveis";
             pointsForAttributesText.gameObject.SetActive(true);
         }
         else
@@ -48,26 +59,27 @@ public class AttributePanelUI : MonoBehaviour
             pointsForAttributesText.gameObject.SetActive(false);
         }
 
-        Debug.Log("Painel de Atributos atualizado com " + pointsForAttributes + " pontos!");
-
-        hpPointsText.text = "HP: " + playerStats.health.ToString();
-        mpPointsText.text = "MP: " + playerStats.mana.ToString();
-        atkPointsText.text = "ATK: " + playerStats.attack.ToString();
-        defPointsText.text = "DEF: " + playerStats.defense.ToString();
-        spdPointsText.text = "SPD: " + playerStats.speed.ToString();
-        wisPointsText.text = "WIS: " + playerStats.wisdom.ToString();
-        dexPointsText.text = "DEX: " + playerStats.dexterity.ToString();
-        vitPointsText.text = "VIT: " + playerStats.vitality.ToString();
+        hpPointsText.text = "HP: " + localPlayerStats.health.Value.ToString();
+        mpPointsText.text = "MP: " + localPlayerStats.mana.Value.ToString();
+        atkPointsText.text = "ATK: " + localPlayerStats.attack.Value.ToString();
+        defPointsText.text = "DEF: " + localPlayerStats.defense.Value.ToString();
+        spdPointsText.text = "SPD: " + localPlayerStats.speed.Value.ToString();
+        wisPointsText.text = "WIS: " + localPlayerStats.wisdom.Value.ToString();
+        dexPointsText.text = "DEX: " + localPlayerStats.dexterity.Value.ToString();
+        vitPointsText.text = "VIT: " + localPlayerStats.vitality.Value.ToString();
     }
-    
+
+    // Este método agora chama o ServerRpc no PlayerStatsRuntime.
     public void IncreaseAttribute(string attribute)
     {
-        if (playerStats.available_attribute_points <= 0)
+        if (localPlayerStats == null || localPlayerStats.available_attribute_points.Value <= 0)
         {
             Debug.Log("Nenhum ponto de atributo disponível.");
             return;
         }
-        Debug.Log("Aumentando atributo: " + attribute);
-        GameEventsManager.Instance.playerEvents.AttributeIncreased(attribute);
+
+        Debug.Log("Pedindo ao servidor para aumentar o atributo: " + attribute);
+        // Pede ao servidor para executar a lógica de aumento de atributo.
+        localPlayerStats.IncreaseAttributeServerRpc(attribute);
     }
 }

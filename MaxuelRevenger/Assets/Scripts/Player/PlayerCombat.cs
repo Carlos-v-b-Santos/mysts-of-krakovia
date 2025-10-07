@@ -1,63 +1,75 @@
 ﻿using System.Collections;
 using UnityEngine;
+using Unity.Netcode; // Importe o Netcode
 
-public class PlayerCombat : MonoBehaviour
+public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
 {
-    private PlayerController player;
-    private RangeWeapon weapon; // Referência para a arma de longo alcance
-
-    [Header("Attack Settings")]
+    [Header("Referências")]
+    [SerializeField] private PlayerStatsRuntime playerStats;
     [SerializeField] public Animator slashAnimator;
-    [SerializeField] public Transform attackPoint;
-    [SerializeField] public Transform attackPivot;
+    [SerializeField] private Transform attackPoint;
     [SerializeField] private LayerMask enemyLayer;
 
+    // Referência para o nosso script de input
+    private PlayerController player;
+    private PlayerInput playerInput;
+
+    // Variáveis de estado
     private bool canAttack = true;
-    private bool isFiring = false;
+
+
+    [Header("Configurações de Combate")]
+    [SerializeField] private float attackRange = 0.6f; // <-- A VARIÁVEL AGORA VIVE AQUI!
+    [SerializeField] private float attackCooldown = 0.5f;
 
     private void Awake()
     {
+        // Apanha a referência para o PlayerInput que está no mesmo GameObject.
         player = GetComponent<PlayerController>();
-        weapon = GetComponentInChildren<RangeWeapon>(); // Pega a arma no objeto filho
+        playerInput = GetComponent<PlayerInput>();
     }
 
-    private void OnEnable()
+    // Apenas o jogador local deve "ouvir" os seus próprios inputs de ataque.
+    public override void OnNetworkSpawn()
     {
-        GameEventsManager.Instance.inputEvents.OnAttackPressed += Attack;
-        GameEventsManager.Instance.inputEvents.OnShootPressed += OnFireStarted;
-        GameEventsManager.Instance.inputEvents.OnShootReleased += OnFireCanceled;
-    }
-
-    private void OnDisable()
-    {
-        GameEventsManager.Instance.inputEvents.OnAttackPressed -= Attack;
-        GameEventsManager.Instance.inputEvents.OnShootPressed -= OnFireStarted;
-        GameEventsManager.Instance.inputEvents.OnShootReleased -= OnFireCanceled;
-    }
-
-    private void Update()
-    {
-        // Se o botão de atirar estiver pressionado, continua atirando
-        if (isFiring && weapon != null)
+        if (IsOwner)
         {
-            weapon.Disparar(); // Supondo que a arma tem seu próprio cooldown interno
+            playerInput.OnAttackPressed += HandleAttack;
         }
     }
 
-    private void Attack()
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
+        {
+            playerInput.OnAttackPressed -= HandleAttack;
+        }
+    }
+    private void HandleAttack()
     {
         if (player.motor.CanMove && canAttack)
         {
             StartCoroutine(AttackCooldownCoroutine());
+            player.playerAnimator.TriggerAttackAnimation();
 
-            // A animação agora é chamada pelo PlayerAnimator
-            // slashAnimator.SetTrigger("attack");
+            // Agora usa a variável 'attackRange' local deste script
+            AttackServerRpc();
+        }
+    }
 
-            Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(attackPoint.position, player.stats.attackRange, enemyLayer);
+    [ServerRpc]
+    private void AttackServerRpc()
+    {
+        // O servidor usa as variáveis locais do seu próprio componente PlayerCombat
+        Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayer);
 
-            foreach (Collider2D enemy in hitEnemies)
+        foreach (Collider2D enemy in hitEnemies)
+        {
+            var enemyHealth = enemy.GetComponent<EnemyHealth>();
+            if (enemyHealth != null)
             {
-                DamageManager.Instance.ApplyDamage(enemy.gameObject, 1, -1); // Usando seu DamageManager
+                // Usa o stat de ataque do PlayerStatsRuntime
+                enemyHealth.TakeDamage(playerStats.attack.Value);
             }
         }
     }
@@ -65,17 +77,7 @@ public class PlayerCombat : MonoBehaviour
     private IEnumerator AttackCooldownCoroutine()
     {
         canAttack = false;
-        yield return new WaitForSeconds(player.stats.attackCooldown);
+        yield return new WaitForSeconds(attackCooldown);
         canAttack = true;
-    }
-
-    private void OnFireStarted() => isFiring = true;
-    private void OnFireCanceled() => isFiring = false;
-
-    private void OnDrawGizmosSelected()
-    {
-        if (attackPoint == null || player == null) return;
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(attackPoint.position, player.stats.attackRange);
     }
 }

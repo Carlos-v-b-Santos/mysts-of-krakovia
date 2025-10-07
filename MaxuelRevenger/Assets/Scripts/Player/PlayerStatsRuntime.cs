@@ -1,123 +1,125 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
+using System; // Adicionado para usar Actions (eventos)
 
-public class PlayerStatsRuntime : MonoBehaviour
+public class PlayerStatsRuntime : NetworkBehaviour
 {
-    [SerializeField] public int max_health { get; private set; } = 100;
-    [SerializeField] public int current_health { get; private set; } = 100;
-    [SerializeField] public int max_mana { get; private set; } = 50;
-    [SerializeField] public int current_mana { get; private set; } = 50;
-    [SerializeField] public int health { get; private set; } = 1;
-    [SerializeField] public int mana { get; private set; } = 1;
-    [SerializeField] public int attack { get; private set; } = 1;
-    [SerializeField] public int defense { get; private set; } = 1;
-    [SerializeField] public int speed { get; private set; } = 1; // velocidade de movimento
-    [SerializeField] public int wisdom { get; private set; } = 1; // regen de mana
-    [SerializeField] public int dexterity { get; private set; } = 1; // velocidade de ataque
-    [SerializeField] public int vitality { get; private set; } = 1; // regen de vida
-    [SerializeField] public int available_attribute_points { get; private set; } = 0;
-    [SerializeField] private int level = 1;
-    [SerializeField] private int current_xp = 0;
-    [SerializeField] private int xp_needed = 100;
-    [SerializeField] private int base_xp_needed = 100;
-    [SerializeField] private float xp_increase_factor = 1.2f;
-    [SerializeField] private int points_per_level = 10;
-    
+    // --- EVENTOS PARA A UI E OUTROS SISTEMAS ---
+    // A UI irá ouvir estes eventos para se atualizar, em vez de verificar a cada frame.
+    public event Action OnStatsChanged;
 
-    PlayerStats playerStats;
+    // --- ATRIBUTOS SINCRONIZADOS ---
+    // Todos os atributos que podem mudar durante o jogo e precisam de ser vistos por todos
+    // são transformados em NetworkVariables. A permissão de escrita é sempre do Servidor.
 
-    public void OnEnable()
+    [Header("Recursos Sincronizados")]
+    public NetworkVariable<int> current_health = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> max_health = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> current_mana = new NetworkVariable<int>(50, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> max_mana = new NetworkVariable<int>(50, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    [Header("Atributos Sincronizados")]
+    public NetworkVariable<int> health = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> mana = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> attack = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> defense = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> speed = new NetworkVariable<int>(8, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server); // Defina o valor base aqui
+    public NetworkVariable<int> wisdom = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> dexterity = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> vitality = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    [Header("Progressão Sincronizada")]
+    public NetworkVariable<int> level = new NetworkVariable<int>(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> current_xp = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> xp_needed = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> available_attribute_points = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // --- LÓGICA DE REDE ---
+
+    public override void OnNetworkSpawn()
     {
-        GameEventsManager.Instance.playerEvents.OnAttributeIncreased += IncreaseAttribute;
-        GameEventsManager.Instance.playerEvents.OnXPReceived += ReceberXP;
+        // Quando o jogador entra na rede, inicializa os seus atributos no servidor.
+        if (IsServer)
+        {
+            // Note que agora usamos ".Value" para aceder ou modificar o valor de uma NetworkVariable
+            current_health.Value = max_health.Value;
+            current_mana.Value = max_mana.Value;
+        }
     }
 
-    public void OnDisable()
+    // O cliente chama este método, mas ele corre APENAS NO SERVIDOR.
+    [ServerRpc]
+    public void IncreaseAttributeServerRpc(string attribute)
     {
-        GameEventsManager.Instance.playerEvents.OnAttributeIncreased -= IncreaseAttribute;
-        GameEventsManager.Instance.playerEvents.OnXPReceived -= ReceberXP;
-    }
+        // O servidor valida se o jogador pode realmente aumentar o atributo
+        if (available_attribute_points.Value <= 0) return;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        playerStats = ScriptableObject.CreateInstance<PlayerStats>();
-        playerStats.InitializeBaseStats();
-    }
+        available_attribute_points.Value--;
 
-    private void IncreaseAttribute(string attribute)
-    {
         switch (attribute)
         {
             case "hp":
-                health++;
-                max_health += 10; // Aumenta a vida m��xima em 10 a cada ponto em "health"
-                current_health = max_health; // Restaura a vida atual para o m��ximo
+                health.Value++;
+                max_health.Value += 10;
+                current_health.Value = max_health.Value; // Recupera a vida ao aumentar
                 break;
             case "mp":
-                mana++;
-                max_mana += 5; // Aumenta a mana m��xima em 5 a cada ponto em "mana"
-                current_mana = max_mana; // Restaura a mana atual para o m��ximo
+                mana.Value++;
+                max_mana.Value += 5;
+                current_mana.Value = max_mana.Value;
                 break;
             case "atk":
-                attack++;
+                attack.Value++;
                 break;
             case "def":
-                defense++;
+                defense.Value++;
                 break;
             case "spd":
-                speed++;
+                speed.Value++;
                 break;
             case "wis":
-                wisdom++;
+                wisdom.Value++;
                 break;
             case "dex":
-                dexterity++;
+                dexterity.Value++;
                 break;
             case "vit":
-                vitality++;
+                vitality.Value++;
                 break;
             default:
                 Debug.LogWarning("Atributo desconhecido: " + attribute);
                 break;
         }
-        available_attribute_points--;
-        GameEventsManager.Instance.playerEvents.AttributeChanged(0);
+
+        // Anuncia que os atributos mudaram para que a UI possa atualizar-se
+        OnStatsChanged?.Invoke();
     }
 
-    
-    public void LevelUp()
-    {
-        level++;
-        IncreaseUpdateXpRequired();
-        IncreasePointsForAttributes();
-        GameEventsManager.Instance.playerEvents.LevelUp(points_per_level);
-        Debug.Log($"Subiu para o n��vel {level}! XP necess��rio para o pr��ximo n��vel: {xp_needed}");
-        // Aqui voc�� pode adicionar l��gica adicional, como aumentar atributos do jogador, conceder pontos de habilidade, etc.
-    }
-
-    public void IncreasePointsForAttributes()
-    {
-        // Aqui você pode adicionar lógica para aumentar os pontos de atributos do jogador  
-        available_attribute_points += points_per_level;
-    }
-
+    // A sua lógica de XP e Level Up já estava correta, apenas precisamos de usar ".Value"
     public void ReceberXP(int amount)
     {
-        current_xp += amount;
-        Debug.Log($"XP recebido: {amount}. XP atual: {current_xp}/{xp_needed}");
+        if (!IsServer) return; // Proteção para garantir que só o servidor dá XP
 
-        // Verifica se o jogador tem XP suficiente para subir de n��vel
-        if (current_xp >= xp_needed)
+        current_xp.Value += amount;
+
+        if (current_xp.Value >= xp_needed.Value)
         {
-            current_xp -= xp_needed; // Mantem o XP que excedeu o necess��rio
             LevelUp();
         }
     }
 
-    public void IncreaseUpdateXpRequired()
+    private void LevelUp()
     {
-        xp_needed = Mathf.RoundToInt(base_xp_needed * Mathf.Pow(level, xp_increase_factor));
+        // Este método só é chamado pelo servidor, por isso não precisa de proteção interna.
+        current_xp.Value -= xp_needed.Value;
+        level.Value++;
+        available_attribute_points.Value += 10; // Exemplo de pontos por nível
+
+        // Lógica para calcular o novo XP necessário...
+        xp_needed.Value = Mathf.RoundToInt(100 * Mathf.Pow(level.Value, 1.2f));
+
+        // Anuncia o Level Up para que a UI e outros sistemas possam reagir
+        OnStatsChanged?.Invoke();
+        Debug.Log($"Jogador {OwnerClientId} subiu para o nível {level.Value}!");
     }
 }
