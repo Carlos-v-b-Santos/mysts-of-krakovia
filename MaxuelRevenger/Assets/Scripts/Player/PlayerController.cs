@@ -73,5 +73,14 @@ public class PlayerController : NetworkBehaviour // Herda de NetworkBehaviour
             // O seu movimento será sincronizado pelo ClientNetworkTransform.
             input.enabled = false;
         }
+        // Apenas o servidor deve definir a posição inicial do jogador
+        if (IsServer)
+        {
+            GameObject spawnPoint = GameObject.Find("SpawnPoint");
+            if (spawnPoint != null)
+            {
+                transform.position = spawnPoint.transform.position;
+            }
+        }
     }
 }
