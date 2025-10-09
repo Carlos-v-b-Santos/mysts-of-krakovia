@@ -45,14 +45,19 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
             playerInput.OnAttackPressed -= HandleAttack;
         }
     }
+    [ClientRpc]
+    private void TriggerAttackFeedbackClientRpc()
+    {
+        // Este comando do servidor diz a todos os clientes para mostrarem o efeito visual do ataque.
+        player.playerAnimator.TriggerAttackAnimation();
+    }
     private void HandleAttack()
     {
-        if (player.motor.CanMove && canAttack)
+        // O cliente agora só verifica se tem controlo do personagem (não está em knockback).
+        // Ele NÃO verifica mais o cooldown do ataque.
+        if (player.motor.canAcceptInput.Value)
         {
-            StartCoroutine(AttackCooldownCoroutine());
-            player.playerAnimator.TriggerAttackAnimation();
-
-            // Agora usa a variável 'attackRange' local deste script
+            // A única responsabilidade do cliente é PEDIR um ataque ao servidor.
             AttackServerRpc();
         }
     }
@@ -60,7 +65,18 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
     [ServerRpc]
     private void AttackServerRpc()
     {
-        // O servidor usa as variáveis locais do seu próprio componente PlayerCombat
+        // --- ESTE CÓDIGO AGORA EXECUTA APENAS NO SERVIDOR ---
+
+        // 1. O SERVIDOR verifica o cooldown.
+        if (!canAttack) return; // Se estiver em cooldown, ignora o pedido.
+
+        // 2. Se o ataque for válido, o SERVIDOR inicia o seu próprio cooldown.
+        StartCoroutine(AttackCooldownCoroutine());
+
+        // 3. O SERVIDOR comanda a todos os clientes para tocarem a animação.
+        TriggerAttackFeedbackClientRpc();
+
+        // 4. O SERVIDOR executa a lógica de detecção de dano.
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayer);
 
         foreach (Collider2D enemy in hitEnemies)
@@ -68,8 +84,9 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
             var enemyHealth = enemy.GetComponent<EnemyHealth>();
             if (enemyHealth != null)
             {
-                // Usa o stat de ataque do PlayerStatsRuntime
-                enemyHealth.TakeDamage(playerStats.attack.Value);
+                // O NetworkObjectID do jogador que está a atacar.
+                ulong attackerId = OwnerClientId;
+                enemyHealth.TakeDamage(playerStats.attack.Value, attackerId);
             }
         }
     }

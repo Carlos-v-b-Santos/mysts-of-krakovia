@@ -9,6 +9,7 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
     [Header("Referências")]
     [SerializeField] private PlayerController player;
     [SerializeField] private PlayerStatsRuntime playerStats;
+    private PlayerMotor playerMotor;
 
     // --- EVENTOS PÚBLICOS ---
     // Outros componentes (Animator, Motor) irão "ouvir" estes anúncios.
@@ -16,6 +17,11 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
     public event Action<Transform> OnDie;
 
     private bool isDead = false;
+
+    private void Awake()
+    {
+        playerMotor = GetComponent<PlayerMotor>();
+    }
 
     // OnNetworkSpawn é onde a lógica de rede começa.
     public override void OnNetworkSpawn()
@@ -55,8 +61,23 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
     {
         if (isDead) return;
 
-        // O SERVIDOR é o único que tem permissão para alterar o valor da NetworkVariable.
+        // O SERVIDOR reduz o valor da vida.
         playerStats.current_health.Value -= damageAmount;
+
+        // --- MUDANÇA PRINCIPAL: INICIAR O KNOCKBACK AQUI ---
+        // 1. Encontra o objeto do atacante que está na rede.
+        Transform attackerTransform = null;
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(attackerId, out NetworkObject attackerObject))
+        {
+            attackerTransform = attackerObject.transform;
+        }
+
+        // 2. Se o atacante foi encontrado, chama o método de knockback no PlayerMotor.
+        if (attackerTransform != null)
+        {
+            playerMotor.ApplyKnockback(attackerTransform);
+        }
+        
 
         if (playerStats.current_health.Value <= 0)
         {
@@ -82,6 +103,7 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
 
         // Anuncia o evento de morte para os outros componentes locais reagirem.
         OnDie?.Invoke(attackerTransform);
+        player.playerAnimator.TriggerDieAnimation();
 
         // Apenas o jogador local irá lidar com a lógica de fim de jogo (ex: reiniciar a cena).
         if (IsOwner)
