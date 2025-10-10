@@ -1,18 +1,15 @@
 using System.Collections;
 using UnityEngine;
-using Unity.Netcode; // Importe o Netcode
-using UnityEngine.SceneManagement;
-using System; // Importe para usar Actions (eventos)
+using Unity.Netcode;
+using System;
 
-public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
+public class PlayerHealth : NetworkBehaviour
 {
     [Header("Referências")]
     [SerializeField] private PlayerController player;
     [SerializeField] private PlayerStatsRuntime playerStats;
     private PlayerMotor playerMotor;
 
-    // --- EVENTOS PÚBLICOS ---
-    // Outros componentes (Animator, Motor) irão "ouvir" estes anúncios.
     public event Action<Transform> OnHurt;
     public event Action<Transform> OnDie;
 
@@ -23,13 +20,10 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
         playerMotor = GetComponent<PlayerMotor>();
     }
 
-    // OnNetworkSpawn é onde a lógica de rede começa.
     public override void OnNetworkSpawn()
     {
-        // Apenas o jogador local precisa de se inscrever para ouvir as suas próprias mudanças de vida.
         if (IsOwner)
         {
-            // Inscreve o método OnHealthChanged para ser chamado sempre que a NetworkVariable de vida mudar no servidor.
             playerStats.current_health.OnValueChanged += OnHealthChanged;
         }
     }
@@ -42,82 +36,67 @@ public class PlayerHealth : NetworkBehaviour // Mude para NetworkBehaviour
         }
     }
 
-    // Este método é chamado AUTOMATICAMENTE em todos os clientes quando a vida do jogador muda no servidor.
+    // Este método é chamado AUTOMATICAMENTE no cliente quando a vida muda no servidor.
     private void OnHealthChanged(int previousValue, int newValue)
     {
-        // Se a vida diminuiu, significa que sofremos dano.
+        // ++ NOVO DEBUG LOG ++
+        // Adicionamos um LogWarning para se destacar em amarelo no console.
+        Debug.LogWarning($"VIDA DO JOGADOR MUDOU! Vida anterior: {previousValue}, Vida atual: {newValue}");
+
         if (newValue < previousValue)
         {
-            // Como a lógica de dano já foi confirmada pelo servidor, agora apenas
-            // anunciamos o evento de "Hurt" para os outros componentes locais reagirem.
-            OnHurt?.Invoke(null); // Passamos null por enquanto, pois a origem do dano não é sincronizada neste exemplo.
+            OnHurt?.Invoke(null);
         }
     }
 
-    // Este método é um PEDIDO que um atacante (como um inimigo ou outro jogador) faz.
-    // Ele corre apenas no SERVIDOR.
     [ServerRpc(RequireOwnership = false)]
     public void TakeDamageServerRpc(int damageAmount, ulong attackerId)
     {
         if (isDead) return;
 
-        // O SERVIDOR reduz o valor da vida.
         playerStats.current_health.Value -= damageAmount;
 
-        // --- MUDANÇA PRINCIPAL: INICIAR O KNOCKBACK AQUI ---
-        // 1. Encontra o objeto do atacante que está na rede.
         Transform attackerTransform = null;
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(attackerId, out NetworkObject attackerObject))
         {
             attackerTransform = attackerObject.transform;
         }
 
-        // 2. Se o atacante foi encontrado, chama o método de knockback no PlayerMotor.
         if (attackerTransform != null)
         {
             playerMotor.ApplyKnockback(attackerTransform);
         }
-        
 
         if (playerStats.current_health.Value <= 0)
         {
             isDead = true;
-            // O servidor determina a morte e envia um comando para todos os clientes.
             DieClientRpc(attackerId);
         }
     }
 
-    // Este método é um COMANDO que o servidor envia para TODOS OS CLIENTES.
     [ClientRpc]
     private void DieClientRpc(ulong attackerId)
     {
-        // Todos os clientes executam a lógica visual da morte.
         isDead = true;
 
-        // Encontra o objeto do atacante para o knockback
         Transform attackerTransform = null;
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(attackerId, out NetworkObject attackerObject))
         {
             attackerTransform = attackerObject.transform;
         }
 
-        // Anuncia o evento de morte para os outros componentes locais reagirem.
         OnDie?.Invoke(attackerTransform);
         player.playerAnimator.TriggerDieAnimation();
 
-        // Apenas o jogador local irá lidar com a lógica de fim de jogo (ex: reiniciar a cena).
         if (IsOwner)
         {
             StartCoroutine(DieSequence());
         }
     }
 
-    // A corrotina de morte corre apenas para o jogador local.
     private IEnumerator DieSequence()
     {
-        // Espera pela animação de morte e knockback.
         yield return new WaitForSeconds(2.0f);
-        // Lógica de fim de jogo, como voltar ao menu principal.
-        // SceneManager.LoadScene("MainMenu"); 
+        // Lógica de fim de jogo...
     }
 }

@@ -21,18 +21,22 @@ public class ServerSceneManager : NetworkBehaviour
             return;
         }
         Instance = this;
+        Debug.Log("[ServerSceneManager] Awake: Singleton instanciado.");
     }
 
     public override void OnNetworkSpawn()
     {
+        Debug.Log("[ServerSceneManager] OnNetworkSpawn: Chamado.");
         if (!IsServer) return;
 
+        Debug.Log("[ServerSceneManager] É o servidor. Iniciando processo de carregamento de cena.");
         NetworkManager.Singleton.OnClientConnectedCallback += HandleClientConnected;
         StartCoroutine(LoadHubScene());
     }
 
     private IEnumerator LoadHubScene()
     {
+        Debug.Log($"[ServerSceneManager] Coroutine LoadHubScene: Iniciando carregamento da cena '{hubSceneName}'.");
         var sceneLoadOperation = SceneManager.LoadSceneAsync(hubSceneName, LoadSceneMode.Additive);
 
         while (!sceneLoadOperation.isDone)
@@ -41,18 +45,18 @@ public class ServerSceneManager : NetworkBehaviour
         }
 
         isHubSceneLoaded = true;
+        Debug.Log($"[ServerSceneManager] <color=green>CENA '{hubSceneName}' CARREGADA COM SUCESSO.</color>");
 
-        // ++ NOVA LÓGICA DE ATIVAÇÃO DO SPAWNER ++
-        Debug.Log("Cena do Hub carregada. Procurando pelo EnemySpawner...");
+        Debug.Log("[ServerSceneManager] Procurando por EnemySpawner na cena...");
         EnemySpawner spawner = FindFirstObjectByType<EnemySpawner>();
         if (spawner != null)
         {
-            Debug.Log("EnemySpawner encontrado! Ativando o spawn.");
+            Debug.Log("[ServerSceneManager] <color=cyan>EnemySpawner ENCONTRADO!</color> Chamando spawner.StartSpawning().");
             spawner.StartSpawning();
         }
         else
         {
-            Debug.LogError("CRÍTICO: Não foi possível encontrar o EnemySpawner na cena carregada! Os inimigos não serão criados.");
+            Debug.LogError("[ServerSceneManager] ERRO CRÍTICO: Não foi possível encontrar o EnemySpawner na cena carregada! Verifique se o objeto está ativo na hierarquia da cena '" + hubSceneName + "'.");
         }
     }
 
@@ -74,7 +78,7 @@ public class ServerSceneManager : NetworkBehaviour
     {
         if (playerPrefab == null)
         {
-            Debug.LogError("Player Prefab não está atribuído no ServerSceneManager!");
+            Debug.LogError("[ServerSceneManager] Player Prefab não está atribuído no ServerSceneManager!");
             return;
         }
 

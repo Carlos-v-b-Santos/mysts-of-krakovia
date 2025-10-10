@@ -146,18 +146,30 @@ public class EnemyController : NetworkBehaviour
     }
 
     // Lógica para causar dano ao tocar no jogador (mantida do seu script original).
+    // Dentro de EnemyController.cs
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        // Este log nos dirá se a colisão está sendo detectada no servidor.
+        if (IsServer)
+        {
+            Debug.Log($"[Servidor] Inimigo colidiu com '{collision.gameObject.name}' que tem a tag '{collision.gameObject.tag}'");
+        }
+
         if (!IsServer) return;
 
         if (collision.gameObject.CompareTag("Player"))
         {
+            Debug.Log("<color=green>[Servidor] Colisão com o Player confirmada!</color>");
             var playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
             if (playerHealth != null)
             {
-                // Pede ao servidor do JOGADOR para processar o dano.
-                // O segundo argumento é o ID do atacante (este inimigo).
+                Debug.Log("<color=green>[Servidor] Componente PlayerHealth encontrado! Chamando TakeDamageServerRpc.</color>");
                 playerHealth.TakeDamageServerRpc(1, NetworkObjectId);
+            }
+            else
+            {
+                Debug.LogError("[Servidor] ERRO: O objeto com a tag 'Player' não tem o componente PlayerHealth!");
             }
         }
     }

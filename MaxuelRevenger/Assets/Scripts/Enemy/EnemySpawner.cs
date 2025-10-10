@@ -1,5 +1,6 @@
 using UnityEngine;
 using Unity.Netcode;
+using System;
 
 public class EnemySpawner : NetworkBehaviour
 {
@@ -11,48 +12,52 @@ public class EnemySpawner : NetworkBehaviour
     [SerializeField] private Transform patrolPointA;
     [SerializeField] private Transform patrolPointB;
 
-    // OnNetworkSpawn não será mais usado para a lógica de spawn.
-    // Deixamos ele vazio ou podemos até removê-lo.
-    public override void OnNetworkSpawn()
+    private void Awake()
     {
-        // A lógica foi movida.
+        // Este log foi útil para o debug, pode ser mantido ou removido.
+        Debug.Log("[EnemySpawner] Awake: O componente está sendo inicializado pela Unity.");
     }
 
-    // ++ NOVO MÉTODO PÚBLICO ++
-    // Este método será chamado pelo ServerSceneManager quando a cena estiver pronta.
     public void StartSpawning()
     {
-        // A lógica que estava em OnNetworkSpawn agora vive aqui.
-        // Como este método só será chamado pelo ServerSceneManager (que já checa se é servidor),
-        // a checagem 'if (!IsServer)' aqui é redundante, mas podemos manter por segurança.
-        if (!IsServer)
+        Debug.Log("[EnemySpawner] Método StartSpawning() FOI CHAMADO.");
+
+        // A VERIFICAÇÃO PROBLEMÁTICA FOI REMOVIDA DAQUI
+        // A autoridade do servidor já é garantida pelo ServerSceneManager, que é o único que chama este método.
+
+        if (enemyPrefab == null)
         {
+            Debug.LogError("[EnemySpawner] FALHA NO SPAWN: O campo 'Enemy Prefab' está VAZIO (None) no Inspector.");
             return;
         }
 
         if (patrolPointA == null || patrolPointB == null)
         {
-            Debug.LogError("Os pontos de patrulha não foram atribuídos no EnemySpawner!", this.gameObject);
+            Debug.LogError("[EnemySpawner] FALHA NO SPAWN: Os campos 'Patrol Point A' ou 'Patrol Point B' estão VAZIOS (None) no Inspector.");
             return;
         }
 
         for (int i = 0; i < numberOfEnemies; i++)
         {
-            GameObject enemyInstance = Instantiate(enemyPrefab, transform.position, Quaternion.identity);
-
-            EnemyController enemyController = enemyInstance.GetComponent<EnemyController>();
-            if (enemyController != null)
+            try
             {
-                enemyController.SetPatrolPoints(patrolPointA, patrolPointB);
-            }
-            else
-            {
-                Debug.LogError($"O prefab do inimigo '{enemyPrefab.name}' não tem o script EnemyController!", enemyInstance);
-            }
+                GameObject enemyInstance = Instantiate(enemyPrefab, transform.position, Quaternion.identity);
+                EnemyController enemyController = enemyInstance.GetComponent<EnemyController>();
+                if (enemyController != null)
+                {
+                    enemyController.SetPatrolPoints(patrolPointA, patrolPointB);
+                }
 
-            enemyInstance.GetComponent<NetworkObject>().Spawn(true);
+                NetworkObject netObj = enemyInstance.GetComponent<NetworkObject>();
+                netObj.Spawn(true);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnemySpawner] ERRO CRÍTICO DURANTE A INSTANCIAÇÃO do prefab '{enemyPrefab.name}'. Erro: {e.Message}");
+                return;
+            }
         }
 
-        Debug.Log($"<color=green>EnemySpawner concluiu o spawn de {numberOfEnemies} inimigos.</color>");
+        Debug.Log($"<color=green>[EnemySpawner] PROCESSO DE SPAWN CONCLUÍDO. {numberOfEnemies} inimigos criados.</color>");
     }
 }

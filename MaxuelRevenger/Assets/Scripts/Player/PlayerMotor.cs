@@ -134,7 +134,7 @@ public class PlayerMotor : NetworkBehaviour // MUDAN�A 1
         // ESTE C�DIGO EXECUTA EM TODOS OS CLIENTES
         Debug.Log("Feedback de knockback ativado!");
         // Futuramente, aqui voc� pode chamar o PlayerAnimator para tocar a anima��o "Hurt"
-        player.playerAnimator.TriggerHurtAnimation();
+       //player.playerAnimator.TriggerHurtAnimation();
         // ou tocar um som de dano.
     }
     private void CheckIfGrounded()
