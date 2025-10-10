@@ -1,8 +1,8 @@
 ﻿using System.Collections;
 using UnityEngine;
-using Unity.Netcode; // Importe o Netcode
+using Unity.Netcode;
 
-public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
+public class PlayerCombat : NetworkBehaviour
 {
     [Header("Referências")]
     [SerializeField] private PlayerStatsRuntime playerStats;
@@ -10,26 +10,20 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
     [SerializeField] private Transform attackPoint;
     [SerializeField] private LayerMask enemyLayer;
 
-    // Referência para o nosso script de input
     private PlayerController player;
     private PlayerInput playerInput;
-
-    // Variáveis de estado
     private bool canAttack = true;
 
-
     [Header("Configurações de Combate")]
-    [SerializeField] private float attackRange = 0.6f; // <-- A VARIÁVEL AGORA VIVE AQUI!
+    [SerializeField] private float attackRange = 0.6f;
     [SerializeField] private float attackCooldown = 0.5f;
 
     private void Awake()
     {
-        // Apanha a referência para o PlayerInput que está no mesmo GameObject.
         player = GetComponent<PlayerController>();
         playerInput = GetComponent<PlayerInput>();
     }
 
-    // Apenas o jogador local deve "ouvir" os seus próprios inputs de ataque.
     public override void OnNetworkSpawn()
     {
         if (IsOwner)
@@ -45,19 +39,12 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
             playerInput.OnAttackPressed -= HandleAttack;
         }
     }
-    [ClientRpc]
-    private void TriggerAttackFeedbackClientRpc()
-    {
-        // Este comando do servidor diz a todos os clientes para mostrarem o efeito visual do ataque.
-        player.playerAnimator.TriggerAttackAnimation();
-    }
+
     private void HandleAttack()
     {
-        // O cliente agora só verifica se tem controlo do personagem (não está em knockback).
-        // Ele NÃO verifica mais o cooldown do ataque.
         if (player.motor.canAcceptInput.Value)
         {
-            // A única responsabilidade do cliente é PEDIR um ataque ao servidor.
+            Debug.Log("[CLIENTE] Input de ataque recebido. Enviando pedido de ataque ao servidor...");
             AttackServerRpc();
         }
     }
@@ -65,30 +52,44 @@ public class PlayerCombat : NetworkBehaviour // Mude para NetworkBehaviour
     [ServerRpc]
     private void AttackServerRpc()
     {
-        // --- ESTE CÓDIGO AGORA EXECUTA APENAS NO SERVIDOR ---
+        Debug.Log("[SERVIDOR] AttackServerRpc recebido.");
 
-        // 1. O SERVIDOR verifica o cooldown.
-        if (!canAttack) return; // Se estiver em cooldown, ignora o pedido.
+        if (!canAttack)
+        {
+            Debug.LogWarning("[SERVIDOR] Pedido de ataque ignorado: Cooldown ativo.");
+            return;
+        }
+        Debug.Log("[SERVIDOR] Cooldown verificado. Prosseguindo com o ataque.");
 
-        // 2. Se o ataque for válido, o SERVIDOR inicia o seu próprio cooldown.
         StartCoroutine(AttackCooldownCoroutine());
-
-        // 3. O SERVIDOR comanda a todos os clientes para tocarem a animação.
         TriggerAttackFeedbackClientRpc();
 
-        // 4. O SERVIDOR executa a lógica de detecção de dano.
+        Debug.Log($"[SERVIDOR] Verificando inimigos no ponto de ataque. Posição: {attackPoint.position}, Raio: {attackRange}, Layer: {LayerMask.LayerToName(Mathf.RoundToInt(Mathf.Log(enemyLayer.value, 2)))}");
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayer);
+
+        Debug.Log($"[SERVIDOR] <color=cyan>{hitEnemies.Length} inimigos encontrados na área de ataque.</color>");
 
         foreach (Collider2D enemy in hitEnemies)
         {
+            Debug.Log($"[SERVIDOR] Tentando aplicar dano em '{enemy.name}'.");
             var enemyHealth = enemy.GetComponent<EnemyHealth>();
             if (enemyHealth != null)
             {
-                // O NetworkObjectID do jogador que está a atacar.
+                Debug.Log($"[SERVIDOR] <color=green>Componente EnemyHealth encontrado em '{enemy.name}'. Chamando TakeDamage.</color>");
                 ulong attackerId = OwnerClientId;
                 enemyHealth.TakeDamage(playerStats.attack.Value, attackerId);
             }
+            else
+            {
+                Debug.LogError($"[SERVIDOR] ERRO: O objeto '{enemy.name}' na layer de inimigos não tem o componente EnemyHealth!");
+            }
         }
+    }
+
+    [ClientRpc]
+    private void TriggerAttackFeedbackClientRpc()
+    {
+        player.playerAnimator.TriggerAttackAnimation();
     }
 
     private IEnumerator AttackCooldownCoroutine()
