@@ -1,8 +1,6 @@
 using UnityEngine;
-using Unity.Netcode; // Importe o Netcode
+using Unity.Netcode;
 
-// O atributo [RequireComponent] é uma salvaguarda que força a Unity a adicionar
-// estes componentes automaticamente se eles estiverem em falta.
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(SpriteRenderer))]
 [RequireComponent(typeof(Animator))]
@@ -12,14 +10,13 @@ using Unity.Netcode; // Importe o Netcode
 [RequireComponent(typeof(PlayerCombat))]
 [RequireComponent(typeof(PlayerAnimator))]
 [RequireComponent(typeof(PlayerStatsRuntime))]
-public class PlayerController : NetworkBehaviour // Herda de NetworkBehaviour
+public class PlayerController : NetworkBehaviour
 {
     [Header("Configuração de Stats")]
     [Tooltip("Arraste o ScriptableObject de PlayerStats para cá.")]
-    public PlayerStats stats; // A referência para os seus stats base
+    public PlayerStats stats;
 
     // --- REFERÊNCIAS PÚBLICAS PARA OS ESPECIALISTAS ---
-    // Outros scripts podem aceder a estes componentes de forma segura através do PlayerController.
     public Rigidbody2D rb { get; private set; }
     public SpriteRenderer spriteRenderer { get; private set; }
     public Animator anim { get; private set; }
@@ -35,7 +32,6 @@ public class PlayerController : NetworkBehaviour // Herda de NetworkBehaviour
 
     private void Awake()
     {
-        // "Apanha" as referências para todos os componentes especialistas no mesmo GameObject.
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
@@ -47,39 +43,30 @@ public class PlayerController : NetworkBehaviour // Herda de NetworkBehaviour
         playerStatsRuntime = GetComponent<PlayerStatsRuntime>();
     }
 
-    // OnNetworkSpawn é o "Start" para objetos de rede.
     public override void OnNetworkSpawn()
     {
-        // A lógica mais importante do multiplayer!
         if (IsOwner)
         {
             // Se este objeto me pertence, guardo-o como a minha instância local.
             // Scripts de UI e a câmara podem agora usar PlayerController.LocalInstance para encontrar o jogador.
             LocalInstance = this;
-
-            // Ativa os componentes que só o jogador local deve correr (o input).
-            input.enabled = true;
-
-            // Faz a câmara seguir apenas o jogador local.
-            CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
-            if (cameraFollow != null)
-            {
-                cameraFollow.target = this.transform;
-            }
         }
-        else
+
+        // A lógica de ativar/desativar o input já é gerida dentro do próprio PlayerInput.cs,
+        // então não precisamos de a duplicar aqui.
+
+        // A lógica de encontrar o spawn point foi removida. Esta responsabilidade
+        // pertence ao script que cria (spawna) o jogador, como o ServerSceneManager.
+    }
+
+    // Limpa a instância quando o objeto é destruído para evitar referências nulas.
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
         {
-            // Se este objeto não me pertence, eu desativo os seus componentes de controlo.
-            // O seu movimento será sincronizado pelo ClientNetworkTransform.
-            input.enabled = false;
-        }
-        // Apenas o servidor deve definir a posição inicial do jogador
-        if (IsServer)
-        {
-            GameObject spawnPoint = GameObject.Find("SpawnPoint");
-            if (spawnPoint != null)
+            if (LocalInstance == this)
             {
-                transform.position = spawnPoint.transform.position;
+                LocalInstance = null;
             }
         }
     }

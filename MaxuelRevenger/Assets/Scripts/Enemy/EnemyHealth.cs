@@ -13,13 +13,18 @@ public class EnemyHealth : NetworkBehaviour
     );
 
     private SpriteRenderer spriteRenderer;
-    private EnemyPatrol patrolScript;
+    private EnemyController enemyController;
     private Animator anim;
+
+    // Hashes para otimização
+    private readonly int hurtBoolHash = Animator.StringToHash("hurt");
+    private readonly int dieBoolHash = Animator.StringToHash("die");
+
 
     public override void OnNetworkSpawn()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        patrolScript = GetComponent<EnemyPatrol>();
+        enemyController = GetComponent<EnemyController>();
         anim = GetComponent<Animator>();
 
         if (IsServer)
@@ -28,17 +33,12 @@ public class EnemyHealth : NetworkBehaviour
         }
     }
 
-    // --- MUDANÇA PRINCIPAL AQUI ---
-    // O método agora aceita o ID do atacante como um segundo parâmetro.
     public void TakeDamage(int damageAmount, ulong attackerId)
     {
         if (!IsServer) return;
-
         if (currentHealth.Value <= 0) return;
 
-        // Log para depuração, mostrando quem atacou.
         Debug.Log($"Inimigo sofreu dano de {damageAmount} do jogador com ID: {attackerId}");
-
         currentHealth.Value -= damageAmount;
 
         if (currentHealth.Value <= 0)
@@ -54,15 +54,20 @@ public class EnemyHealth : NetworkBehaviour
     [ClientRpc]
     private void HurtClientRpc()
     {
+        // Inicia o feedback visual de flash E a animação de dano.
         StartCoroutine(DamageFlashCoroutine());
+        StartCoroutine(HurtAnimationCoroutine());
     }
 
     [ClientRpc]
     private void DieClientRpc()
     {
-        if (patrolScript != null) patrolScript.enabled = false;
+        if (enemyController != null) enemyController.enabled = false;
         GetComponent<Collider2D>().enabled = false;
         GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+
+        // Ativa o estado de morte no Animator.
+        anim.SetBool(dieBoolHash, true);
 
         if (IsServer)
         {
@@ -75,6 +80,14 @@ public class EnemyHealth : NetworkBehaviour
         spriteRenderer.color = Color.red;
         yield return new WaitForSeconds(0.1f);
         spriteRenderer.color = Color.white;
+    }
+
+    // Coroutine para imitar um Trigger com o Bool "hurt".
+    private IEnumerator HurtAnimationCoroutine()
+    {
+        anim.SetBool(hurtBoolHash, true);
+        yield return null; // Espera um frame
+        anim.SetBool(hurtBoolHash, false);
     }
 
     private IEnumerator DestroyAfterAnimation()

@@ -394,6 +394,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 2230095232751758287}
   attackPivot: {fileID: 2237558602199096171}
   playerStats: {fileID: 923195393734111274}
+  anim: {fileID: 6217612608575423821}
   jumpForce: 15
   groundCheckPoint: {fileID: 5000263292800544692}
   groundLayer:
@@ -402,6 +403,8 @@ MonoBehaviour:
   groundCheckRadius: 0.2
   knockbackForce: 5
   knockbackAirGravityScale: 4
+  canAcceptInput:
+    m_InternalValue: 1
 --- !u!114 &-3832355905838885346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -428,9 +431,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 136ad5a409ef9ad4db91350d350cb588, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 3766725674102704501}
   anim: {fileID: 6217612608575423821}
-  rb: {fileID: 3287366061196348962}
+  player: {fileID: 3766725674102704501}
 --- !u!114 &3766725674102704501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -499,21 +501,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8d0727d5ae3244e3b569694d3912374, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TransitionStateInfoList:
-  - IsCrossFadeExit: 0
-    Layer: 0
-    OriginatingState: -47425911
-    DestinationState: -2034506358
-    TransitionDuration: 0.25
-    TriggerNameHash: -1481439722
-    TransitionIndex: 1
-  - IsCrossFadeExit: 0
-    Layer: 0
-    OriginatingState: -329150988
-    DestinationState: -2034506358
-    TransitionDuration: 0.25
-    TriggerNameHash: -1481439722
-    TransitionIndex: 1
+  TransitionStateInfoList: []
   m_Animator: {fileID: 6217612608575423821}
 --- !u!1 &4322662659870577852
 GameObject:

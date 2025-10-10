@@ -2,24 +2,24 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 
-public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
+public class PlayerMotor : NetworkBehaviour // MUDANï¿½A 1
 {
-    [Header("Referências")]
+    [Header("Referï¿½ncias")]
     [SerializeField] private Rigidbody2D rb;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Transform attackPivot;
     [SerializeField] private PlayerStatsRuntime playerStats;
     [SerializeField] private Animator anim;
 
-    [Header("Configurações de Movimento")]
+    [Header("Configuraï¿½ï¿½es de Movimento")]
     [SerializeField] private float jumpForce = 15f;
 
-    [Header("Verificação de Chão")]
+    [Header("Verificaï¿½ï¿½o de Chï¿½o")]
     [SerializeField] private Transform groundCheckPoint;
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckRadius = 0.2f;
 
-    [Header("Configurações de Knockback")]
+    [Header("Configuraï¿½ï¿½es de Knockback")]
     [SerializeField] private float knockbackForce = 5f;
     [SerializeField] private float knockbackAirGravityScale = 4f;
 
@@ -30,7 +30,7 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
     public NetworkVariable<bool> canAcceptInput = new NetworkVariable<bool>(true, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private float originalGravityScale;
 
-    // MUDANÇA 2: Variável de rede para sincronizar a direção
+    // MUDANï¿½A 2: Variï¿½vel de rede para sincronizar a direï¿½ï¿½o
     private NetworkVariable<bool> isFacingRight = new NetworkVariable<bool>(true, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     private void Awake()
@@ -43,15 +43,15 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
    
     private void FixedUpdate()
     {
-        // A verificação de chão é uma informação local que o Animator precisa.
-        // É seguro que cada cliente verifique o seu próprio estado de "grounded"
-        // para que as animações fiquem corretas e responsivas.
+        // A verificaï¿½ï¿½o de chï¿½o ï¿½ uma informaï¿½ï¿½o local que o Animator precisa.
+        // ï¿½ seguro que cada cliente verifique o seu prï¿½prio estado de "grounded"
+        // para que as animaï¿½ï¿½es fiquem corretas e responsivas.
         if (IsOwner)
         {
             CheckIfGrounded();
         }
 
-        // Esta parte é para o SERVIDOR verificar o chão e controlar o Animator de todos.
+        // Esta parte ï¿½ para o SERVIDOR verificar o chï¿½o e controlar o Animator de todos.
         if (IsServer)
         {
             CheckIfGrounded();
@@ -60,7 +60,7 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
     }
     private void OnEnable()
     {
-        // A inscrição nos eventos locais continua igual. O que muda é o que os Handlers fazem.
+        // A inscriï¿½ï¿½o nos eventos locais continua igual. O que muda ï¿½ o que os Handlers fazem.
         playerInput.OnMoveEvent += HandleMove;
         playerInput.OnJumpPressed += HandleJump;
     }
@@ -73,7 +73,7 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
 
     private void Update()
     {
-        // A função do Update agora é garantir que o estado visual (flip do sprite) esteja sincronizado em todos os clientes.
+        // A funï¿½ï¿½o do Update agora ï¿½ garantir que o estado visual (flip do sprite) esteja sincronizado em todos os clientes.
         if (isFacingRight.Value)
         {
             spriteRenderer.flipX = false;
@@ -86,7 +86,7 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
         }
     }
 
-    // MUDANÇA 3: Handlers agora chamam ServerRPCs em vez de agir localmente
+    // MUDANï¿½A 3: Handlers agora chamam ServerRPCs em vez de agir localmente
     private void HandleMove(float direction)
     {
         if (canAcceptInput.Value)
@@ -115,7 +115,7 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
         if (direction > 0.1f) isFacingRight.Value = true;
         else if (direction < -0.1f) isFacingRight.Value = false;
 
-        // O servidor define o parâmetro de velocidade no Animator.
+        // O servidor define o parï¿½metro de velocidade no Animator.
         anim.SetFloat("speed", Mathf.Abs(direction));
     }
 
@@ -131,9 +131,9 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
     [ClientRpc]
     public void PlayKnockbackFeedbackClientRpc()
     {
-        // ESTE CÓDIGO EXECUTA EM TODOS OS CLIENTES
+        // ESTE Cï¿½DIGO EXECUTA EM TODOS OS CLIENTES
         Debug.Log("Feedback de knockback ativado!");
-        // Futuramente, aqui você pode chamar o PlayerAnimator para tocar a animação "Hurt"
+        // Futuramente, aqui vocï¿½ pode chamar o PlayerAnimator para tocar a animaï¿½ï¿½o "Hurt"
         player.playerAnimator.TriggerHurtAnimation();
         // ou tocar um som de dano.
     }
@@ -142,38 +142,38 @@ public class PlayerMotor : NetworkBehaviour // MUDANÇA 1
         isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
     }
 
-    // O Knockback precisa ser repensado para rede, mas por agora vamos mantê-lo.
+    // O Knockback precisa ser repensado para rede, mas por agora vamos mantï¿½-lo.
     // Idealmente, seria um ClientRpc chamado pelo servidor.
-    // 1. O PONTO DE ENTRADA PÚBLICO (CHAMADO POR OUTROS SCRIPTS NO SERVIDOR)
+    // 1. O PONTO DE ENTRADA Pï¿½BLICO (CHAMADO POR OUTROS SCRIPTS NO SERVIDOR)
     public void ApplyKnockback(Transform enemyTransform)
     {
-        // Cláusula de guarda: Apenas o servidor pode iniciar um knockback.
+        // Clï¿½usula de guarda: Apenas o servidor pode iniciar um knockback.
         if (!IsServer) return;
 
-        // Inicia a coroutine que vai gerir a lógica do knockback no servidor.
+        // Inicia a coroutine que vai gerir a lï¿½gica do knockback no servidor.
         StartCoroutine(ServerKnockbackCoroutine(enemyTransform.position));
 
         // Comanda a todos os clientes para mostrarem o feedback visual.
         PlayKnockbackFeedbackClientRpc();
     }
 
-    // 2. A COROUTINE QUE EXECUTA A LÓGICA (APENAS NO SERVIDOR)
+    // 2. A COROUTINE QUE EXECUTA A Lï¿½GICA (APENAS NO SERVIDOR)
     private IEnumerator ServerKnockbackCoroutine(Vector3 enemyPosition)
     {
-        // Remove o controlo do jogador (este valor será sincronizado para o cliente)
+        // Remove o controlo do jogador (este valor serï¿½ sincronizado para o cliente)
         canAcceptInput.Value = false;
         rb.velocity = Vector2.zero;
 
-        // Calcula e aplica a força da física
+        // Calcula e aplica a forï¿½a da fï¿½sica
         Vector2 knockbackDirection = (transform.position - enemyPosition).normalized;
         rb.AddForce(knockbackDirection * knockbackForce, ForceMode2D.Impulse);
 
         CheckIfGrounded();
         if (isGrounded)
         {
-            yield return new WaitForSeconds(0.4f); // Duração do "stun" no chão
+            yield return new WaitForSeconds(0.4f); // Duraï¿½ï¿½o do "stun" no chï¿½o
         }
-        else // Lógica para esperar até tocar no chão se estiver no ar
+        else // Lï¿½gica para esperar atï¿½ tocar no chï¿½o se estiver no ar
         {
             rb.gravityScale = knockbackAirGravityScale;
             yield return new WaitForFixedUpdate();
